@@ -4,9 +4,11 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useSession } from "@/lib/useSession";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { applyUser } = useSession(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -17,9 +19,9 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.login(email, password);
+      const user = await api.login(email, password);
+      await applyUser(user);
       router.replace("/");
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha no login");
     } finally {

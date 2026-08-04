@@ -10,7 +10,7 @@ type History = Awaited<ReturnType<typeof api.playerHistory>>;
 
 export default function PerfilPage() {
   const router = useRouter();
-  const { user, loading } = useSession();
+  const { user, loading, refresh } = useSession();
   const [history, setHistory] = useState<History | null>(null);
 
   useEffect(() => {
@@ -58,6 +58,7 @@ export default function PerfilPage() {
         className="mt-lg w-full rounded-full border border-outline px-4 py-3 text-label-md"
         onClick={async () => {
           await api.logout();
+          await refresh();
           router.replace("/login");
         }}
       >

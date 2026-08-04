@@ -1,4 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5080";
+// Empty = same-origin `/api/*` via Next.js rewrites (reliable cookies in local dev).
+// Set NEXT_PUBLIC_API_URL only when the browser must call the API directly.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export type Membership = {
   groupId: string;

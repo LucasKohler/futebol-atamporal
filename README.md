@@ -49,7 +49,7 @@ dotnet run --project apps/api/src/FutebolAtemporal.Api
 
 # Web (outro terminal)
 cd apps/web
-cp ../../.env.example .env.local   # opcional; default já aponta para :5080
+# .env.local opcional — sem NEXT_PUBLIC_API_URL o browser usa /api (proxy Next → :5080)
 npm install
 npm run dev
 ```

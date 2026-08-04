@@ -11,6 +11,7 @@ type Session = {
   error: string | null;
   isAdmin: boolean;
   refresh: () => Promise<void>;
+  applyUser: (me: User) => Promise<void>;
 };
 
 const SessionContext = createContext<Session | null>(null);
@@ -30,6 +31,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(me);
     setGroup(await api.currentGroup());
+  }
+
+  async function applyUser(me: User) {
+    setUser(me);
+    setGroup(await api.currentGroup());
+    setLoading(false);
+    setError(null);
   }
 
   useEffect(() => {
@@ -60,7 +68,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.memberships.some((m) => m.role === "Admin") ?? false;
 
   return (
-    <SessionContext.Provider value={{ user, group, loading, error, isAdmin, refresh }}>
+    <SessionContext.Provider value={{ user, group, loading, error, isAdmin, refresh, applyUser }}>
       {children}
     </SessionContext.Provider>
   );

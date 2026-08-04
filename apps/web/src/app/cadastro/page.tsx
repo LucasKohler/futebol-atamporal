@@ -4,9 +4,11 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useSession } from "@/lib/useSession";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { applyUser } = useSession(false);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,9 +20,9 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.register(email, password, displayName);
+      const user = await api.register(email, password, displayName);
+      await applyUser(user);
       router.replace("/");
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha no cadastro");
     } finally {
