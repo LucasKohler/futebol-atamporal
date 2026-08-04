@@ -1,0 +1,11 @@
+namespace FutebolAtemporal.Domain.Exceptions;
+
+public class DomainException : Exception
+{
+    public DomainException(string message) : base(message) { }
+}
+
+public class ForbiddenException : Exception
+{
+    public ForbiddenException(string message) : base(message) { }
+}

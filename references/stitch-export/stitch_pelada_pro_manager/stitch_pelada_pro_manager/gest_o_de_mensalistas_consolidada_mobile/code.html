@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PitchPerfect - Mensalistas</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container-highest": "#d3e4fe",
+                "surface-ice": "#f8f9ff",
+                "primary-fixed-dim": "#97d3b9",
+                "outline": "#707974",
+                "on-primary": "#ffffff",
+                "surface": "#f8f9ff",
+                "outline-variant": "#bfc9c2",
+                "surface-container-lowest": "#ffffff",
+                "primary-fixed": "#b3efd4",
+                "error-container": "#ffdad6",
+                "inverse-primary": "#97d3b9",
+                "on-secondary": "#ffffff",
+                "waiting-list-amber": "#d97706",
+                "surface-bright": "#f8f9ff",
+                "secondary-container": "#d5e0f8",
+                "on-secondary-fixed-variant": "#3c475a",
+                "on-error-container": "#93000a",
+                "error-soft": "#ffdad6",
+                "surface-variant": "#d3e4fe",
+                "surface-container-high": "#dce9ff",
+                "on-tertiary-fixed-variant": "#73342f",
+                "on-tertiary-fixed": "#3b0908",
+                "on-secondary-container": "#586377",
+                "error": "#ba1a1a",
+                "surface-dim": "#cbdbf5",
+                "surface-tint": "#2f6953",
+                "secondary": "#545f73",
+                "surface-container-low": "#eff4ff",
+                "on-tertiary-container": "#e49088",
+                "on-surface": "#0b1c30",
+                "on-error": "#ffffff",
+                "on-primary-fixed-variant": "#12503c",
+                "surface-container": "#e5eeff",
+                "inverse-surface": "#213145",
+                "surface-border": "#bec9c2",
+                "primary-container": "#004532",
+                "on-primary-container": "#78b299",
+                "on-surface-variant": "#404944",
+                "pitch-green-container": "#065f46",
+                "primary": "#002d1f",
+                "on-secondary-fixed": "#111c2d",
+                "background": "#f8f9ff",
+                "secondary-fixed-dim": "#bcc7de",
+                "inverse-on-surface": "#eaf1ff",
+                "on-primary-fixed": "#002116",
+                "on-tertiary": "#ffffff",
+                "tertiary-fixed": "#ffdad6",
+                "secondary-fixed": "#d8e3fb",
+                "tertiary": "#491411",
+                "on-background": "#0b1c30",
+                "tertiary-container": "#652925",
+                "tertiary-fixed-dim": "#ffb3ac"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "md": "16px",
+                "container-max": "1280px",
+                "gutter": "24px",
+                "lg": "24px",
+                "xl": "40px",
+                "xs": "4px",
+                "sm": "8px"
+        },
+        "fontFamily": {
+                "label-sm": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "label-md": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "label-sm": [
+                        "10px",
+                        {
+                                "lineHeight": "12px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-md": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .filter-btn.active {
+            background-color: theme('colors.secondary-container');
+            color: theme('colors.on-secondary-container');
+            border-color: theme('colors.secondary-container');
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md text-body-md antialiased pb-20">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-50 border-b border-outline-variant bg-background">
+<div class="flex justify-between items-center px-md py-4 max-w-container-max mx-auto">
+<button class="text-primary hover:text-primary-container transition-colors cursor-pointer active:opacity-80 focus:outline-none">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">sports_soccer</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-display text-primary tracking-tight">PitchPerfect</h1>
+<button class="text-primary hover:text-primary-container transition-colors cursor-pointer active:opacity-80 focus:outline-none">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow px-md py-lg max-w-lg mx-auto w-full">
+<div class="mb-lg">
+<h2 class="font-headline-lg text-headline-lg mb-xs">Mensalistas</h2>
+<p class="text-secondary font-body-md text-body-md">Gestão de pagamentos - Outubro</p>
+</div>
+<!-- Filters -->
+<div class="flex space-x-2 mb-lg overflow-x-auto pb-2 -mx-md px-md no-scrollbar items-center">
+<button class="filter-btn active font-label-md text-label-md px-4 py-2 rounded-xl border border-outline-variant text-on-surface whitespace-nowrap transition-colors" data-filter="all">Todos</button>
+<button class="filter-btn font-label-md text-label-md px-4 py-2 rounded-xl border border-outline-variant text-on-surface whitespace-nowrap transition-colors" data-filter="pending">Pendentes</button>
+<button class="filter-btn font-label-md text-label-md px-4 py-2 rounded-xl border border-outline-variant text-on-surface whitespace-nowrap transition-colors" data-filter="late">Atrasados</button>
+<button class="filter-btn font-label-md text-label-md px-4 py-2 rounded-xl border border-outline-variant text-on-surface whitespace-nowrap transition-colors" data-filter="paid">Pagos</button>
+</div>
+<!-- Summary -->
+<div class="grid grid-cols-3 gap-2 mb-lg"><div class="bg-surface-container-low rounded-xl p-3 text-center border border-outline-variant/30"><span class="block font-label-md text-label-md text-secondary uppercase tracking-wider mb-1">Recebido</span><span class="font-headline-lg text-headline-lg text-primary">12</span></div><div class="bg-surface-container-low rounded-xl p-3 text-center border border-outline-variant/30"><span class="block font-label-md text-label-md text-secondary uppercase tracking-wider mb-1">Pendente</span><span class="font-headline-lg text-headline-lg text-waiting-list-amber">5</span></div><div class="bg-surface-container-low rounded-xl p-3 text-center border border-outline-variant/30"><span class="block font-label-md text-label-md text-secondary uppercase tracking-wider mb-1">Atrasado</span><span class="font-headline-lg text-headline-lg text-error">2</span></div></div>
+<!-- Player List -->
+<div class="space-y-sm" id="player-list"><!-- Carlos Silva --><div class="player-card bg-surface border-b border-outline-variant/30 py-3 flex items-center justify-between" data-status="pending"><div class="flex items-center space-x-3"><img class="w-10 h-10 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDs8j9vTuw4UbDcvax-BSD0OLkSA45sh-mEMnATtiDFkXEpfuPBxPKkgB0hitYS25WBGMTN3ZZuVsYUCoGbOxWp8jzVg1pQ1Pv80r1iM4tKAgct6SE3b-x9jS0sc_SjQmvuJaJWQvitHevXfs5zV9IhIHNFTr6-SkGmi3ZtI80MaEaD6itgol-gNJykednT5My_R-wDK9Kgu6IlZzNl7tfhn70hFYWj-LWstha3ZtUfniYtAFVJwiPz7A"/><div class="flex flex-col"><h3 class="font-body-lg text-body-lg font-semibold text-on-surface">Carlos Silva</h3><div class="flex items-center space-x-2 mt-1"><span class="font-label-sm text-label-sm text-waiting-list-amber bg-waiting-list-amber/10 px-2 py-0.5 rounded-full uppercase tracking-tight">Pendente</span><span class="font-label-md text-label-md text-secondary">R$ 150</span></div></div></div><button class="pay-btn text-primary hover:bg-primary-container/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors"><span class="material-symbols-outlined">check_circle</span></button></div><!-- Marcos Rodrigues --><div class="player-card bg-surface border-b border-outline-variant/30 py-3 flex items-center justify-between" data-status="late"><div class="flex items-center space-x-3"><div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-secondary font-headline-md text-headline-md">MR</div><div class="flex flex-col"><h3 class="font-body-lg text-body-lg font-semibold text-on-surface">Marcos Rodrigues</h3><div class="flex items-center space-x-2 mt-1"><span class="font-label-sm text-label-sm text-error bg-error/10 px-2 py-0.5 rounded-full uppercase tracking-tight">Atrasado (5 dias)</span></div></div></div><button class="pay-btn text-primary hover:bg-primary-container/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors"><span class="material-symbols-outlined">check_circle</span></button></div><!-- João Mendes --><div class="player-card bg-surface border-b border-outline-variant/30 py-3 flex items-center justify-between opacity-60" data-status="paid"><div class="flex items-center space-x-3"><img class="w-10 h-10 rounded-full object-cover grayscale-[30%]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBS4EB5aLqmkO_sozzsNp1A34lSoTVYRkyu5uR2d-OqgxzDzu-aF_k01G5X88TYkB1jMnCNvioKgmZt_qM-KPMLHc9P7Nd66Ro0xWTQjPHretZP9SNoWowJTKk861R1WUQKkj1YNG4rvsnAW-b5QIDD0uUUWGJ5oAiN-R4AeVy99mCSkUCXCX9veJEFmRMS2wxHHEIUCs4Bg2hx7N6z0PFB38dCplyPmj5-agXKbzUPNKasOy4i_lrjxg"/><div class="flex flex-col"><h3 class="font-body-lg text-body-lg font-semibold text-on-surface">João Mendes</h3><div class="flex items-center space-x-2 mt-1"><span class="font-label-sm text-label-sm text-primary bg-primary-container/20 px-2 py-0.5 rounded-full uppercase tracking-tight">Pago em 02/10</span></div></div></div><div class="text-primary/40 w-10 h-10 flex items-center justify-center"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span></div></div></div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-4 pt-2 bg-surface-container-lowest border-t border-outline-variant md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant scale-95 transition-transform duration-100 p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant scale-95 transition-transform duration-100 p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1">sports_soccer</span>
+<span class="font-label-md text-label-md">Matches</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 scale-95 transition-transform duration-100" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label-md text-label-md">Members</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant scale-95 transition-transform duration-100 p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple filtering logic
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Update active state
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+
+                const filter = e.target.getAttribute('data-filter');
+                const cards = document.querySelectorAll('.player-card');
+
+                cards.forEach(card => {
+                    if (filter === 'all' || card.getAttribute('data-status') === filter) {
+                        card.style.display = 'flex';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // Simple payment confirmation simulation
+        document.querySelectorAll('.pay-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const card = this.closest('.player-card');
+                
+                // Visual feedback
+                this.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span>';
+                
+                setTimeout(() => {
+                    card.setAttribute('data-status', 'paid');
+                    card.classList.remove('border-l-4', 'border-l-error', 'border-y', 'border-r');
+                    card.classList.add('border', 'opacity-60');
+                    
+                    const nameContainer = card.querySelector('.flex-col, div > div'); // Rough targeting
+                    if(nameContainer) {
+                        const statusContainer = nameContainer.querySelector('.flex.items-center.mt-0\\.5, .flex.items-center.mt-1');
+                        if(statusContainer) {
+                            statusContainer.innerHTML = `
+                                <span class="font-label-sm text-label-sm text-primary bg-primary-container/20 px-2 py-0.5 rounded-full inline-block uppercase">Pago agora</span>
+                            `;
+                        }
+                    }
+
+                    // Replace button with check icon
+                    const btnParent = this.parentNode;
+                    const checkDiv = document.createElement('div');
+                    checkDiv.className = 'text-primary w-8 h-8 flex items-center justify-center';
+                    checkDiv.innerHTML = '<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: \'FILL\' 1;">check_circle</span>';
+                    
+                    btnParent.replaceChild(checkDiv, this);
+                    
+                    // Re-apply current filter
+                    const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
+                    if (activeFilter !== 'all' && activeFilter !== 'paid') {
+                        setTimeout(() => { card.style.display = 'none'; }, 500);
+                    }
+
+                }, 600);
+            });
+        });
+    </script>
+</body></html>

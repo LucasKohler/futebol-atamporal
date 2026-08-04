@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PitchPerfect - Home do Jogador</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container-highest": "#d3e4fe",
+                "surface-ice": "#f8f9ff",
+                "primary-fixed-dim": "#97d3b9",
+                "outline": "#707974",
+                "on-primary": "#ffffff",
+                "surface": "#f8f9ff",
+                "outline-variant": "#bfc9c2",
+                "surface-container-lowest": "#ffffff",
+                "primary-fixed": "#b3efd4",
+                "error-container": "#ffdad6",
+                "inverse-primary": "#97d3b9",
+                "on-secondary": "#ffffff",
+                "waiting-list-amber": "#d97706",
+                "surface-bright": "#f8f9ff",
+                "secondary-container": "#d5e0f8",
+                "on-secondary-fixed-variant": "#3c475a",
+                "on-error-container": "#93000a",
+                "error-soft": "#ffdad6",
+                "surface-variant": "#d3e4fe",
+                "surface-container-high": "#dce9ff",
+                "on-tertiary-fixed-variant": "#73342f",
+                "on-tertiary-fixed": "#3b0908",
+                "on-secondary-container": "#586377",
+                "error": "#ba1a1a",
+                "surface-dim": "#cbdbf5",
+                "surface-tint": "#2f6953",
+                "secondary": "#545f73",
+                "surface-container-low": "#eff4ff",
+                "on-tertiary-container": "#e49088",
+                "on-surface": "#0b1c30",
+                "on-error": "#ffffff",
+                "on-primary-fixed-variant": "#12503c",
+                "surface-container": "#e5eeff",
+                "inverse-surface": "#213145",
+                "surface-border": "#bec9c2",
+                "primary-container": "#004532",
+                "on-primary-container": "#78b299",
+                "on-surface-variant": "#404944",
+                "pitch-green-container": "#065f46",
+                "primary": "#065f46",
+                "on-secondary-fixed": "#111c2d",
+                "background": "#f8f9ff",
+                "secondary-fixed-dim": "#bcc7de",
+                "inverse-on-surface": "#eaf1ff",
+                "on-primary-fixed": "#002116",
+                "on-tertiary": "#ffffff",
+                "tertiary-fixed": "#ffdad6",
+                "secondary-fixed": "#d8e3fb",
+                "tertiary": "#491411",
+                "on-background": "#0b1c30",
+                "tertiary-container": "#652925",
+                "tertiary-fixed-dim": "#ffb3ac"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "md": "16px",
+                "container-max": "1280px",
+                "gutter": "24px",
+                "lg": "24px",
+                "xl": "40px",
+                "xs": "4px",
+                "sm": "8px"
+        },
+        "fontFamily": {
+                "label-sm": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "label-md": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "label-sm": [
+                        "10px",
+                        {
+                                "lineHeight": "12px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-md": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col antialiased">
+<!-- TopAppBar (Web) -->
+<header class="w-full top-0 sticky bg-background border-b border-outline-variant z-30 hidden md:block">
+<div class="flex justify-between items-center px-lg py-4 max-w-container-max mx-auto">
+<div class="flex items-center gap-2 cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined text-primary text-headline-md font-headline-md">sports_soccer</span>
+<span class="font-display text-display text-primary font-bold">PitchPerfect</span>
+</div>
+<nav class="flex gap-8">
+<a class="text-primary border-b-2 border-primary pb-1 font-label-md text-label-md" href="#">Matches</a>
+<a class="text-secondary hover:text-primary transition-colors pb-1 font-label-md text-label-md" href="#">Rankings</a>
+<a class="text-secondary hover:text-primary transition-colors pb-1 font-label-md text-label-md" href="#">Profile</a>
+</nav>
+<div class="cursor-pointer active:opacity-80 hover:text-primary transition-colors text-secondary">
+<span class="material-symbols-outlined text-headline-md font-headline-md">notifications</span>
+</div>
+</div>
+</header>
+<div class="flex flex-1 relative overflow-hidden">
+<!-- NavigationDrawer (Sidebar Desktop) -->
+<aside class="h-screen w-64 hidden md:flex flex-col bg-surface border-r border-outline-variant fixed left-0 top-0 h-full z-40 pt-24 pb-8">
+<div class="px-6 mb-8 flex items-center gap-4">
+<img alt="User Profile" class="w-12 h-12 rounded-full object-cover border border-outline-variant" data-alt="A professional headshot of a young male athlete in a white polo shirt, well-lit studio environment, smiling confidently. Soft shadows and clean white background, high contrast, crisp details." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZzDajLN08zoJbqJAWMLNA5MBCQ4vX8XbOJyuwrZ5_6XMOHr67bVAfelF1fEw599EtoWeZpaMoOPRfDpIiryAui4ipsdsuc5vjVevc3nR9pvDV-HWVn_FAhBAINBMlQ8k7lBpKkV7ORR4AVme0PF1lh8mFYqGJL7VdScAI6j5aNzzm58dMpg9AtCzr7FwA381M7wcZj7jB4HSgT1e0lZcCiR-Gmwdht8q0NYxxR0rJmlZulIFLp9NrpQ"/>
+<div>
+<div class="font-label-md text-label-md text-primary">Admin Panel</div>
+<div class="font-body-md text-body-md text-on-surface-variant text-sm">Match Organizer</div>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-2 pr-4">
+<a class="bg-primary text-on-primary rounded-r-full font-bold px-6 py-3 flex items-center gap-3 cursor-pointer" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 cursor-pointer rounded-r-full px-6 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Mensalistas</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 cursor-pointer rounded-r-full px-6 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">shuffle</span>
+<span class="font-label-md text-label-md">Sorteio</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 cursor-pointer rounded-r-full px-6 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-md text-label-md">Histórico</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 cursor-pointer rounded-r-full px-6 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-md text-label-md">Rankings</span>
+</a>
+</nav>
+<div class="px-6">
+<div class="text-xs text-secondary mb-1 uppercase tracking-wider font-semibold">League Status</div>
+<div class="font-label-md text-label-md text-primary">Weekly League</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 p-md md:p-lg overflow-y-auto">
+<div class="max-w-container-max mx-auto">
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background mb-lg font-bold">Player Dashboard</h1>
+<!-- 12-Column Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Left Column: Match Details & Roster (Spans 8 columns) -->
+<div class="md:col-span-8 flex flex-col gap-lg">
+<!-- Next Match Bento Card -->
+<div class="bg-surface border border-outline-variant rounded-xl p-6 relative overflow-hidden group hover:shadow-lg transition-all duration-300 border-l-4 border-l-primary">
+<!-- Background Pattern/Graphic -->
+<div class="absolute -right-16 -top-16 opacity-5 pointer-events-none transition-transform duration-700 group-hover:scale-110">
+<span class="material-symbols-outlined" style="font-size: 200px;">sports_soccer</span>
+</div>
+<div class="flex justify-between items-start mb-6 relative z-10">
+<div>
+<h2 class="font-headline-md text-headline-md text-primary mb-1">Next Match: Derby Night</h2>
+<p class="font-body-md text-body-md text-secondary flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">calendar_today</span> Thu, Oct 26 • 20:00 - 21:30
+                                    </p>
+<p class="font-body-md text-body-md text-secondary flex items-center gap-2 mt-1">
+<span class="material-symbols-outlined text-sm">location_on</span> Arena Municipal Pitch A
+                                    </p>
+</div>
+<div class="bg-surface-container-highest text-primary px-3 py-1 rounded-full font-label-md text-label-md flex items-center gap-1 border border-outline-variant">
+<span class="material-symbols-outlined text-sm" style="font-size: 16px;">check_circle</span> Confirmed
+                                </div>
+</div>
+<!-- Quick Stats for Match -->
+<div class="grid grid-cols-3 gap-4 mb-6">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 text-center">
+<div class="font-display text-2xl text-on-background mb-1">14/14</div>
+<div class="font-label-md text-label-md text-secondary uppercase tracking-wide">Players</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 text-center">
+<div class="font-display text-2xl text-on-background mb-1">$15</div>
+<div class="font-label-md text-label-md text-secondary uppercase tracking-wide">Fee</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 text-center">
+<div class="font-display text-2xl text-primary mb-1 flex items-center justify-center gap-1">
+<span class="material-symbols-outlined">sunny</span>
+</div>
+<div class="font-label-md text-label-md text-secondary uppercase tracking-wide">Clear, 18°C</div>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-label-md text-label-md hover:bg-primary/90 transition-colors">
+                                View Full Details
+                            </button>
+</div>
+<!-- Confirmed Players List -->
+<div class="bg-surface border border-outline-variant rounded-xl p-6">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-on-background">Roster (14/14)</h3>
+<button class="text-primary font-label-md text-label-md hover:underline">Manage</button>
+</div>
+<!-- Table Layout -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant text-secondary font-label-md text-label-md uppercase tracking-wider">
+<th class="py-3 px-4 w-12 font-semibold">#</th>
+<th class="py-3 px-4 font-semibold">Player</th>
+<th class="py-3 px-4 font-semibold">Role</th>
+<th class="py-3 px-4 text-right font-semibold">Status</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md divide-y divide-outline-variant/50">
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3 px-4 text-secondary font-mono">01</td>
+<td class="py-3 px-4 font-medium text-on-background flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-sm">LM</div>
+                                                Lucas Mendes
+                                            </td>
+<td class="py-3 px-4 text-secondary">Midfielder</td>
+<td class="py-3 px-4 text-right">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container-highest text-primary text-xs font-semibold">Monthly</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3 px-4 text-secondary font-mono">02</td>
+<td class="py-3 px-4 font-medium text-on-background flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-sm">RC</div>
+                                                Rafael Costa
+                                            </td>
+<td class="py-3 px-4 text-secondary">Defender</td>
+<td class="py-3 px-4 text-right">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary text-on-primary text-xs font-semibold">Paid</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3 px-4 text-secondary font-mono">03</td>
+<td class="py-3 px-4 font-medium text-on-background flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-sm">TS</div>
+                                                Tiago Silva (G)
+                                            </td>
+<td class="py-3 px-4 text-secondary">Goalkeeper</td>
+<td class="py-3 px-4 text-right">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container-highest text-primary text-xs font-semibold">Monthly</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant">
+<h4 class="font-label-md text-label-md text-secondary uppercase tracking-wider mb-3">Waitlist (2)</h4>
+<div class="flex gap-2">
+<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-tertiary-container text-on-tertiary-container text-sm font-medium">João P.</span>
+<span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-tertiary-container text-on-tertiary-container text-sm font-medium">Marcos F.</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Ranking & History (Spans 4 columns) -->
+<div class="md:col-span-4 flex flex-col gap-lg">
+<!-- Quick Ranking Card -->
+<div class="bg-surface border border-outline-variant rounded-xl p-6">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-on-background">
+                                    Top Scorers
+                                </h3>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-3">
+<div class="font-display text-xl text-primary font-bold w-6">1</div>
+<div>
+<div class="font-label-md text-label-md text-on-background">Lucas Mendes</div>
+<div class="font-body-md text-sm text-secondary">12 Goals</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-3">
+<div class="font-display text-xl text-secondary font-bold w-6">2</div>
+<div>
+<div class="font-label-md text-label-md text-on-background">Pedro Santos</div>
+<div class="font-body-md text-sm text-secondary">9 Goals</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-low transition-colors bg-surface-container-highest border border-outline-variant">
+<div class="flex items-center gap-3">
+<div class="font-display text-xl text-secondary font-bold w-6">5</div>
+<div>
+<div class="font-label-md text-label-md text-on-background">You</div>
+<div class="font-body-md text-sm text-secondary">4 Goals</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary text-sm">arrow_upward</span>
+</div>
+</div>
+<button class="w-full mt-4 border border-outline text-secondary py-2 rounded-lg font-label-md text-label-md hover:bg-surface-container-low transition-colors uppercase tracking-wider">
+                                Full Ranking
+                            </button>
+</div>
+<!-- Match History Mini-Card -->
+<div class="bg-surface border border-outline-variant rounded-xl p-6">
+<h3 class="font-headline-md text-headline-md text-on-background mb-4">Recent Form</h3>
+<div class="flex gap-2 justify-between mb-4">
+<!-- W D L Form Indicators -->
+<div class="w-8 h-8 rounded flex items-center justify-center bg-primary text-on-primary font-bold text-sm">W</div>
+<div class="w-8 h-8 rounded flex items-center justify-center bg-primary text-on-primary font-bold text-sm">W</div>
+<div class="w-8 h-8 rounded flex items-center justify-center bg-surface-container-highest text-primary font-bold text-sm">D</div>
+<div class="w-8 h-8 rounded flex items-center justify-center bg-error-container text-on-error-container font-bold text-sm">L</div>
+<div class="w-8 h-8 rounded flex items-center justify-center bg-primary text-on-primary font-bold text-sm">W</div>
+</div>
+<div class="space-y-3 border-t border-outline-variant pt-4">
+<div class="flex justify-between items-center text-sm">
+<span class="text-secondary font-body-md text-body-md">Last Match</span>
+<span class="font-medium text-on-background font-body-md text-body-md">Team A 3 - 1 Team B</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-secondary font-body-md text-body-md">Your Rating</span>
+<span class="font-medium text-primary flex items-center gap-1 font-body-md text-body-md">
+                                        7.5 <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span>
+</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-4 pt-2 bg-surface border-t border-outline-variant shadow-md md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant scale-95 transition-transform duration-100 active:bg-surface-variant rounded-lg p-2" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full px-4 py-1 scale-95 transition-transform duration-100" href="#">
+<span class="material-symbols-outlined">sports_soccer</span>
+<span class="font-label-md text-label-md">Partidas</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant scale-95 transition-transform duration-100 active:bg-surface-variant rounded-lg p-2" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-md text-label-md">Rankings</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant scale-95 transition-transform duration-100 active:bg-surface-variant rounded-lg p-2" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md">Perfil</span>
+</a>
+</nav>
+</body></html>

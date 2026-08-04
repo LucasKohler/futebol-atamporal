@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sorteio de Times - PitchPerfect</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config from Design System -->
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container-highest": "#d3e4fe",
+                "surface-ice": "#f8f9ff",
+                "primary-fixed-dim": "#97d3b9",
+                "outline": "#707974",
+                "on-primary": "#ffffff",
+                "surface": "#f8f9ff",
+                "outline-variant": "#bfc9c2",
+                "surface-container-lowest": "#ffffff",
+                "primary-fixed": "#b3efd4",
+                "error-container": "#ffdad6",
+                "inverse-primary": "#97d3b9",
+                "on-secondary": "#ffffff",
+                "waiting-list-amber": "#d97706",
+                "surface-bright": "#f8f9ff",
+                "secondary-container": "#d5e0f8",
+                "on-secondary-fixed-variant": "#3c475a",
+                "on-error-container": "#93000a",
+                "error-soft": "#ffdad6",
+                "surface-variant": "#d3e4fe",
+                "surface-container-high": "#dce9ff",
+                "on-tertiary-fixed-variant": "#73342f",
+                "on-tertiary-fixed": "#3b0908",
+                "on-secondary-container": "#586377",
+                "error": "#ba1a1a",
+                "surface-dim": "#cbdbf5",
+                "surface-tint": "#2f6953",
+                "secondary": "#545f73",
+                "surface-container-low": "#eff4ff",
+                "on-tertiary-container": "#e49088",
+                "on-surface": "#0b1c30",
+                "on-error": "#ffffff",
+                "on-primary-fixed-variant": "#12503c",
+                "surface-container": "#e5eeff",
+                "inverse-surface": "#213145",
+                "surface-border": "#bec9c2",
+                "primary-container": "#004532",
+                "on-primary-container": "#78b299",
+                "on-surface-variant": "#404944",
+                "pitch-green-container": "#065f46",
+                "primary": "#002d1f",
+                "on-secondary-fixed": "#111c2d",
+                "background": "#f8f9ff",
+                "secondary-fixed-dim": "#bcc7de",
+                "inverse-on-surface": "#eaf1ff",
+                "on-primary-fixed": "#002116",
+                "on-tertiary": "#ffffff",
+                "tertiary-fixed": "#ffdad6",
+                "secondary-fixed": "#d8e3fb",
+                "tertiary": "#491411",
+                "on-background": "#0b1c30",
+                "tertiary-container": "#652925",
+                "tertiary-fixed-dim": "#ffb3ac"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "md": "16px",
+                "container-max": "1280px",
+                "gutter": "24px",
+                "lg": "24px",
+                "xl": "40px",
+                "xs": "4px",
+                "sm": "8px"
+        },
+        "fontFamily": {
+                "label-sm": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "label-md": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "label-sm": [
+                        "10px",
+                        {
+                                "lineHeight": "12px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-md": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md antialiased pb-24">
+<!-- Shared Component: TopAppBar -->
+<header class="bg-background text-primary font-headline-md text-headline-md w-full top-0 sticky border-b border-outline-variant flat no shadows flex justify-between items-center px-md py-4 max-w-container-max mx-auto z-40">
+<div class="flex items-center gap-3 cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined text-primary" data-icon="sports_soccer">sports_soccer</span>
+<span class="font-display text-headline-md text-primary tracking-tight">PitchPerfect</span>
+</div>
+<div class="flex items-center cursor-pointer active:opacity-80 hover:text-primary-container transition-colors">
+<span class="material-symbols-outlined text-secondary" data-icon="notifications">notifications</span>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 w-full max-w-container-max mx-auto px-md py-lg relative">
+<!-- View 1: Setup / Confirmed List -->
+<section class="flex flex-col gap-lg transition-opacity duration-300" id="setup-view">
+<div class="flex flex-col gap-1">
+<h1 class="font-headline-lg text-headline-lg text-on-background">Sorteio de Times</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">15 jogadores confirmados para a partida.</p>
+</div>
+<!-- Roster List (Mobile Summary Cards) -->
+<div class="flex flex-col gap-sm">
+<!-- Player Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex items-center justify-between hover:border-primary transition-colors hover:shadow-sm"><div class="flex items-center gap-3 w-full"><div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary font-label-md">MC</div><div class="flex flex-1 items-center justify-between"><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface">Marcos Costa</span><span class="font-body-md text-body-md text-on-surface-variant text-[12px]">Atacante</span></div><div class="bg-pitch-green-container text-white px-2.5 py-1 rounded-full font-label-md text-label-md">8.5</div></div></div></div>
+<!-- Player Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex items-center justify-between hover:border-primary transition-colors hover:shadow-sm"><div class="flex items-center gap-3 w-full"><div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary font-label-md">JS</div><div class="flex flex-1 items-center justify-between"><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface">João Silva</span><span class="font-body-md text-body-md text-on-surface-variant text-[12px]">Meio-campo</span></div><div class="bg-pitch-green-container text-white px-2.5 py-1 rounded-full font-label-md text-label-md">7.8</div></div></div></div>
+<!-- Player Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex items-center justify-between hover:border-primary transition-colors hover:shadow-sm"><div class="flex items-center gap-3 w-full"><div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary font-label-md">PL</div><div class="flex flex-1 items-center justify-between"><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface">Pedro Lima</span><span class="font-body-md text-body-md text-on-surface-variant text-[12px]">Zagueiro</span></div><div class="bg-pitch-green-container text-white px-2.5 py-1 rounded-full font-label-md text-label-md">8.0</div></div></div></div>
+<!-- Trimmed list for brevity in code, implying scroll -->
+<div class="py-4 text-center">
+<span class="font-label-md text-label-md text-on-surface-variant">... mais 12 jogadores ...</span>
+</div>
+</div>
+<!-- Action Area -->
+<div class="pt-4"><p class="text-center text-on-surface-variant text-[12px] mb-4 px-4">O sorteio utiliza o nível técnico dos jogadores para criar times equilibrados automaticamente.</p>
+<button class="w-full bg-pitch-green-container text-white font-label-md text-label-md py-4 rounded-xl shadow-sm hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-md" onclick="realizarSorteio()">
+<span class="material-symbols-outlined" data-icon="shuffle">shuffle</span>
+                    Realizar Sorteio
+                </button>
+</div>
+</section>
+<!-- View 2: Results -->
+<section class="hidden flex-col gap-lg transition-opacity duration-300" id="result-view">
+<div class="flex flex-col gap-1">
+<h1 class="font-headline-lg text-headline-lg text-on-background">Resultado do Sorteio</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Times gerados com base no nível técnico.</p>
+</div>
+<!-- Balance Indicator -->
+<div class="bg-primary-fixed text-on-primary-fixed rounded-xl p-4 flex items-center gap-4">
+<span class="material-symbols-outlined icon-filled text-primary" data-icon="balance">balance</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md">Sorteio Equilibrado</span>
+<span class="font-body-md text-body-md">Diferença de nível: <strong>2%</strong></span>
+</div>
+</div>
+<!-- Teams Layout -->
+<div class="flex flex-col gap-lg">
+<!-- Team A -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="bg-surface-container py-3 px-4 flex justify-between items-center border-b border-outline-variant">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Time A</h2>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface-variant">Média:</span>
+<span class="bg-surface-container-lowest text-primary font-label-md text-label-md px-2 py-1 rounded-md border border-outline-variant">7.8</span>
+</div>
+</div>
+<div class="p-0">
+<ul class="flex flex-col">
+<li class="flex justify-between items-center py-3 px-4 border-b border-outline-variant/50 last:border-0">
+<span class="font-body-md text-body-md text-on-surface">Marcos Costa</span>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container px-2 py-1 rounded">8.5</span>
+</li>
+<li class="flex justify-between items-center py-3 px-4 border-b border-outline-variant/50 last:border-0">
+<span class="font-body-md text-body-md text-on-surface">Rafael Souza</span>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container px-2 py-1 rounded">7.5</span>
+</li>
+<li class="flex justify-between items-center py-3 px-4 border-b border-outline-variant/50 last:border-0">
+<span class="font-body-md text-body-md text-on-surface">Lucas Moura</span>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container px-2 py-1 rounded">8.0</span>
+</li>
+<li class="flex justify-between items-center py-3 px-4 border-b border-outline-variant/50 last:border-0">
+<span class="font-body-md text-body-md text-on-surface">Felipe Melo</span>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container px-2 py-1 rounded">7.0</span>
+</li>
+<li class="flex justify-between items-center py-3 px-4 border-b border-outline-variant/50 last:border-0">
+<span class="font-body-md text-body-md text-on-surface">André Cruz</span>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container px-2 py-1 rounded">8.0</span>
+</li>
+</ul>
+</div>
+</div>
+<!-- Team B -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="bg-surface-container py-3 px-4 flex justify-between items-center border-b border-outline-variant">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-secondary"></div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Time B</h2>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface-variant">Média:</span>
+<span class="bg-surface-container-lowest text-secondary font-label-md text-label-md px-2 py-1 rounded-md border border-outline-variant">7.7</span>
+</div>
+</div>
+<div class="p-0">
+<ul class="flex flex-col">
+<li class="flex justify-between items-center py-3 px-4 border-b border-outline-variant/50 last:border-0">
+<span class="font-body-md text-body-md text-on-surface">João Silva</span>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container px-2 py-1 rounded">7.8</span>
+</li>
+<li class="flex justify-between items-center py-3 px-4 border-b border-outline-variant/50 last:border-0">
+<span class="font-body-md text-body-md text-on-surface">Pedro Lima</span>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container px-2 py-1 rounded">8.0</span>
+</li>
+<li class="flex justify-between items-center py-3 px-4 border-b border-outline-variant/50 last:border-0">
+<span class="font-body-md text-body-md text-on-surface">Carlos Eduardo</span>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container px-2 py-1 rounded">7.2</span>
+</li>
+<li class="flex justify-between items-center py-3 px-4 border-b border-outline-variant/50 last:border-0">
+<span class="font-body-md text-body-md text-on-surface">Diego Alves</span>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container px-2 py-1 rounded">7.9</span>
+</li>
+<li class="flex justify-between items-center py-3 px-4 border-b border-outline-variant/50 last:border-0">
+<span class="font-body-md text-body-md text-on-surface">Bruno Costa</span>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container px-2 py-1 rounded">7.6</span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-3 pt-4">
+<button class="w-full bg-pitch-green-container text-white font-label-md text-label-md py-4 rounded-xl shadow-sm hover:opacity-90 active:scale-95 transition-all">
+                    Confirmar Times
+                </button>
+<button class="w-full bg-transparent border border-outline text-secondary font-label-md text-label-md py-3.5 rounded-xl hover:bg-surface-container active:scale-95 transition-all flex items-center justify-center gap-2" onclick="refazerSorteio()">
+<span class="material-symbols-outlined" data-icon="refresh">refresh</span>
+                    Refazer Sorteio
+                </button>
+</div>
+</section>
+</main>
+<!-- Shared Component: BottomNavBar -->
+<nav class="bg-surface fixed bottom-0 left-0 w-full md:hidden border-t border-outline-variant shadow-md z-50 flex justify-around items-center px-4 pb-4 pt-2">
+<!-- Home -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant scale-95 transition-transform duration-100 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-[10px] mt-1">Home</span>
+</div>
+<!-- Matches (Active mapped semantic intent for Sorteio) -->
+<div class="flex flex-col items-center justify-center bg-pitch-green-container text-white rounded-xl px-4 py-1 scale-95 transition-transform duration-100 cursor-pointer shadow-sm">
+<span class="material-symbols-outlined icon-filled" data-icon="sports_soccer">sports_soccer</span>
+<span class="font-label-md text-[10px] mt-1">Matches</span>
+</div>
+<!-- Rankings -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant scale-95 transition-transform duration-100 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-md text-[10px] mt-1">Rankings</span>
+</div>
+<!-- Profile -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant scale-95 transition-transform duration-100 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-[10px] mt-1">Profile</span>
+</div>
+</nav>
+<script>
+        function realizarSorteio() {
+            const setup = document.getElementById('setup-view');
+            const result = document.getElementById('result-view');
+            
+            setup.style.opacity = '0';
+            setTimeout(() => {
+                setup.classList.add('hidden');
+                setup.classList.remove('flex');
+                
+                result.classList.remove('hidden');
+                result.classList.add('flex');
+                
+                // Small delay to allow display change before fading in
+                setTimeout(() => {
+                    result.style.opacity = '1';
+                }, 50);
+            }, 300);
+        }
+
+        function refazerSorteio() {
+            const setup = document.getElementById('setup-view');
+            const result = document.getElementById('result-view');
+            
+            result.style.opacity = '0';
+            setTimeout(() => {
+                result.classList.add('hidden');
+                result.classList.remove('flex');
+                
+                setup.classList.remove('hidden');
+                setup.classList.add('flex');
+                
+                setTimeout(() => {
+                    setup.style.opacity = '1';
+                }, 50);
+            }, 300);
+        }
+    </script>
+</body></html>

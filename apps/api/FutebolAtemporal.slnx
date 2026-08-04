@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FutebolAtemporal.Api/FutebolAtemporal.Api.csproj" />
+    <Project Path="src/FutebolAtemporal.Application/FutebolAtemporal.Application.csproj" />
+    <Project Path="src/FutebolAtemporal.Domain/FutebolAtemporal.Domain.csproj" />
+    <Project Path="src/FutebolAtemporal.Infrastructure/FutebolAtemporal.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FutebolAtemporal.Api.Tests/FutebolAtemporal.Api.Tests.csproj" />
+    <Project Path="tests/FutebolAtemporal.Domain.Tests/FutebolAtemporal.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

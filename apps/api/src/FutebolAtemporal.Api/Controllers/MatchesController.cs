@@ -1,0 +1,200 @@
+using System.Security.Claims;
+using FutebolAtemporal.Application.Draws;
+using FutebolAtemporal.Application.Matches;
+using FutebolAtemporal.Application.Memberships;
+using FutebolAtemporal.Application.Results;
+using FutebolAtemporal.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace FutebolAtemporal.Api.Controllers;
+
+internal static class UserExt
+{
+    public static Guid GetUserId(this ClaimsPrincipal user)
+    {
+        var id = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(id, out var guid))
+            throw new UnauthorizedAccessException();
+        return guid;
+    }
+}
+
+[ApiController]
+[Authorize]
+[Route("api/matches")]
+public sealed class MatchesController : ControllerBase
+{
+    private readonly IMatchService _matches;
+    private readonly IRegistrationService _registrations;
+
+    public MatchesController(IMatchService matches, IRegistrationService registrations)
+    {
+        _matches = matches;
+        _registrations = registrations;
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<MatchDto>> Create([FromBody] CreateMatchRequest request, CancellationToken ct)
+        => Ok(await _matches.CreateAsync(User.GetUserId(), request, ct));
+
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<MatchDto>>> List([FromQuery] Guid groupId, CancellationToken ct)
+        => Ok(await _matches.ListAsync(User.GetUserId(), groupId, ct));
+
+    [HttpGet("upcoming")]
+    public async Task<ActionResult<MatchDetailDto>> Upcoming([FromQuery] Guid groupId, CancellationToken ct)
+    {
+        var detail = await _matches.GetUpcomingAsync(User.GetUserId(), groupId, ct);
+        return detail is null ? NotFound() : Ok(detail);
+    }
+
+    [HttpGet("{matchId:guid}")]
+    public async Task<ActionResult<MatchDetailDto>> Get(Guid matchId, CancellationToken ct)
+    {
+        var detail = await _matches.GetAsync(User.GetUserId(), matchId, ct);
+        return detail is null ? NotFound() : Ok(detail);
+    }
+
+    [HttpPut("{matchId:guid}")]
+    public async Task<ActionResult<MatchDto>> Update(Guid matchId, [FromBody] UpdateMatchRequest request, CancellationToken ct)
+        => Ok(await _matches.UpdateAsync(User.GetUserId(), matchId, request, ct));
+
+    [HttpPost("{matchId:guid}/transition")]
+    public async Task<ActionResult<MatchDto>> Transition(Guid matchId, [FromBody] TransitionRequest body, CancellationToken ct)
+        => Ok(await _matches.TransitionAsync(User.GetUserId(), matchId, body.Status, ct));
+
+    [HttpPost("{matchId:guid}/join")]
+    public async Task<ActionResult<MatchDetailDto>> Join(Guid matchId, CancellationToken ct)
+        => Ok(await _registrations.JoinAsync(User.GetUserId(), matchId, ct));
+
+    [HttpPost("{matchId:guid}/leave")]
+    public async Task<ActionResult<MatchDetailDto>> Leave(Guid matchId, CancellationToken ct)
+        => Ok(await _registrations.LeaveAsync(User.GetUserId(), matchId, ct));
+
+    [HttpPost("{matchId:guid}/registrations/{playerProfileId:guid}/remove")]
+    public async Task<ActionResult<MatchDetailDto>> Remove(Guid matchId, Guid playerProfileId, CancellationToken ct)
+        => Ok(await _registrations.AdminRemoveAsync(User.GetUserId(), matchId, playerProfileId, ct));
+}
+
+public sealed record TransitionRequest(MatchStatus Status);
+
+[ApiController]
+[Authorize]
+[Route("api/groups/{groupId:guid}/memberships")]
+public sealed class MembershipsController : ControllerBase
+{
+    private readonly IMembershipService _svc;
+    public MembershipsController(IMembershipService svc) => _svc = svc;
+
+    [HttpGet]
+    public async Task<ActionResult> List(Guid groupId, CancellationToken ct)
+        => Ok(await _svc.ListMembersAsync(User.GetUserId(), groupId, ct));
+
+    [HttpPost]
+    public async Task<ActionResult> Add(Guid groupId, [FromBody] AddMemberRequest body, CancellationToken ct)
+        => Ok(await _svc.AddMemberAsync(User.GetUserId(), groupId, body.PlayerProfileId, ct));
+
+    [HttpPost("{membershipId:guid}/status")]
+    public async Task<ActionResult> Status(Guid groupId, Guid membershipId, [FromBody] StatusRequest body, CancellationToken ct)
+        => Ok(await _svc.SetStatusAsync(User.GetUserId(), membershipId, body.Status, ct));
+
+    [HttpPost("periods")]
+    public async Task<ActionResult> EnsurePeriod(Guid groupId, [FromBody] PeriodRequest body, CancellationToken ct)
+        => Ok(await _svc.EnsurePeriodAsync(User.GetUserId(), groupId, body.Year, body.Month, ct));
+
+    [HttpGet("payments")]
+    public async Task<ActionResult> Payments(Guid groupId, [FromQuery] int? year, [FromQuery] int? month, [FromQuery] PaymentStatus? status, CancellationToken ct)
+        => Ok(await _svc.ListPaymentsAsync(User.GetUserId(), groupId, year, month, status, ct));
+
+    [HttpPut("{membershipId:guid}/payments/{periodId:guid}")]
+    public async Task<ActionResult> UpsertPayment(Guid groupId, Guid membershipId, Guid periodId, [FromBody] UpsertPaymentRequest body, CancellationToken ct)
+        => Ok(await _svc.UpsertPaymentAsync(User.GetUserId(), membershipId, periodId, body, ct));
+}
+
+public sealed record AddMemberRequest(Guid PlayerProfileId);
+public sealed record StatusRequest(MonthlyMembershipStatus Status);
+public sealed record PeriodRequest(int Year, int Month);
+
+[ApiController]
+[Authorize]
+[Route("api/matches/{matchId:guid}/draw")]
+public sealed class DrawController : ControllerBase
+{
+    private readonly IDrawService _draws;
+    public DrawController(IDrawService draws) => _draws = draws;
+
+    [HttpGet]
+    public async Task<ActionResult> Get(Guid matchId, CancellationToken ct)
+    {
+        var draw = await _draws.GetCurrentAsync(User.GetUserId(), matchId, ct);
+        return draw is null ? NotFound() : Ok(draw);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult> Create(Guid matchId, [FromBody] CreateDrawRequest? body, CancellationToken ct)
+        => Ok(await _draws.CreateDrawAsync(User.GetUserId(), matchId, body?.Seed, ct));
+
+    [HttpPost("{drawId:guid}/confirm")]
+    public async Task<ActionResult> Confirm(Guid matchId, Guid drawId, CancellationToken ct)
+        => Ok(await _draws.ConfirmDrawAsync(User.GetUserId(), drawId, ct));
+
+    [HttpPost("{drawId:guid}/swap")]
+    public async Task<ActionResult> Swap(Guid matchId, Guid drawId, [FromBody] SwapRequest body, CancellationToken ct)
+    {
+        await _draws.SwapPlayersAsync(User.GetUserId(), drawId, body.PlayerA, body.PlayerB, ct);
+        return Ok(await _draws.GetCurrentAsync(User.GetUserId(), matchId, ct));
+    }
+}
+
+public sealed record CreateDrawRequest(string? Seed);
+public sealed record SwapRequest(Guid PlayerA, Guid PlayerB);
+
+[ApiController]
+[Authorize]
+[Route("api/matches/{matchId:guid}/result")]
+public sealed class ResultsController : ControllerBase
+{
+    private readonly IResultService _results;
+    public ResultsController(IResultService results) => _results = results;
+
+    [HttpGet]
+    public async Task<ActionResult> Get(Guid matchId, CancellationToken ct)
+    {
+        var r = await _results.GetAsync(User.GetUserId(), matchId, ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpPost("close")]
+    public async Task<ActionResult> Close(Guid matchId, [FromBody] CloseMatchRequest body, CancellationToken ct)
+        => Ok(await _results.CloseAsync(User.GetUserId(), matchId, body, ct));
+}
+
+[ApiController]
+[Authorize]
+[Route("api/groups/{groupId:guid}/rankings")]
+public sealed class RankingsController : ControllerBase
+{
+    private readonly IStatsService _stats;
+    public RankingsController(IStatsService stats) => _stats = stats;
+
+    [HttpGet]
+    public async Task<ActionResult> Get(Guid groupId, [FromQuery] string sortBy = "wins", CancellationToken ct = default)
+        => Ok(await _stats.GetRankingsAsync(User.GetUserId(), groupId, sortBy, ct));
+}
+
+[ApiController]
+[Authorize]
+[Route("api/players")]
+public sealed class PlayersController : ControllerBase
+{
+    private readonly IStatsService _stats;
+    public PlayersController(IStatsService stats) => _stats = stats;
+
+    [HttpGet("{playerProfileId:guid}/history")]
+    public async Task<ActionResult> History(Guid playerProfileId, CancellationToken ct)
+    {
+        var h = await _stats.GetPlayerHistoryAsync(User.GetUserId(), playerProfileId, ct);
+        return h is null ? NotFound() : Ok(h);
+    }
+}

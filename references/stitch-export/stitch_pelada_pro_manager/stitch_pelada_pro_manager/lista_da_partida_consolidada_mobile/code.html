@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lista do Futebol - Mobile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container-highest": "#d3e4fe",
+                "surface-ice": "#f8f9ff",
+                "primary-fixed-dim": "#97d3b9",
+                "outline": "#707974",
+                "on-primary": "#ffffff",
+                "surface": "#f8f9ff",
+                "outline-variant": "#bfc9c2",
+                "surface-container-lowest": "#ffffff",
+                "primary-fixed": "#b3efd4",
+                "error-container": "#ffdad6",
+                "inverse-primary": "#97d3b9",
+                "on-secondary": "#ffffff",
+                "waiting-list-amber": "#d97706",
+                "surface-bright": "#f8f9ff",
+                "secondary-container": "#d5e0f8",
+                "on-secondary-fixed-variant": "#3c475a",
+                "on-error-container": "#93000a",
+                "error-soft": "#ffdad6",
+                "surface-variant": "#d3e4fe",
+                "surface-container-high": "#dce9ff",
+                "on-tertiary-fixed-variant": "#73342f",
+                "on-tertiary-fixed": "#3b0908",
+                "on-secondary-container": "#586377",
+                "error": "#ba1a1a",
+                "surface-dim": "#cbdbf5",
+                "surface-tint": "#2f6953",
+                "secondary": "#545f73",
+                "surface-container-low": "#eff4ff",
+                "on-tertiary-container": "#e49088",
+                "on-surface": "#0b1c30",
+                "on-error": "#ffffff",
+                "on-primary-fixed-variant": "#12503c",
+                "surface-container": "#e5eeff",
+                "inverse-surface": "#213145",
+                "surface-border": "#bec9c2",
+                "primary-container": "#004532",
+                "on-primary-container": "#78b299",
+                "on-surface-variant": "#404944",
+                "pitch-green-container": "#065f46",
+                "primary": "#002d1f",
+                "on-secondary-fixed": "#111c2d",
+                "background": "#f8f9ff",
+                "secondary-fixed-dim": "#bcc7de",
+                "inverse-on-surface": "#eaf1ff",
+                "on-primary-fixed": "#002116",
+                "on-tertiary": "#ffffff",
+                "tertiary-fixed": "#ffdad6",
+                "secondary-fixed": "#d8e3fb",
+                "tertiary": "#491411",
+                "on-background": "#0b1c30",
+                "tertiary-container": "#652925",
+                "tertiary-fixed-dim": "#ffb3ac"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "md": "16px",
+                "container-max": "1280px",
+                "gutter": "24px",
+                "lg": "24px",
+                "xl": "40px",
+                "xs": "4px",
+                "sm": "8px"
+        },
+        "fontFamily": {
+                "label-sm": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "label-md": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "label-sm": [
+                        "10px",
+                        {
+                                "lineHeight": "12px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-md": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background pb-32">
+<!-- TopAppBar -->
+<header class="bg-background text-primary font-headline-md text-headline-md w-full top-0 sticky border-b border-outline-variant z-30">
+<div class="flex justify-between items-center px-md py-sm max-w-container-max mx-auto">
+<div class="flex items-center gap-2 text-primary font-headline-md text-headline-md">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">sports_soccer</span>
+<span class="font-headline-md text-headline-md text-primary">PitchPerfect</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined hover:text-primary-container transition-colors text-primary cursor-pointer">notifications</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="px-md pt-lg pb-xl max-w-container-max mx-auto">
+<!-- Match Context Header -->
+<div class="mb-lg"><div class="flex justify-between items-start mb-sm"><h1 class="font-headline-md text-headline-md text-on-background">Sábado - 10:00</h1><span class="font-label-md text-label-md bg-secondary-container text-on-secondary-container px-2 py-1 rounded-full">12/14 Vagas</span></div></div>
+<!-- Priority Info Banner -->
+<div class="bg-surface-container-low border-l-4 border-pitch-green-container rounded-r-lg p-md mb-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-pitch-green-container mt-1">info</span>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Prioridade Mensalistas</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+                    Mensalistas têm vaga garantida até as 18h de quinta-feira. Após esse horário, a fila de espera avança automaticamente.
+                </p>
+</div>
+</div>
+<!-- Section: Confirmados - Mensalistas -->
+<section class="mb-lg">
+<div class="flex justify-between items-center mb-sm">
+<h2 class="font-headline-md text-headline-md text-on-background">Confirmados</h2>
+</div>
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden mb-sm">
+<!-- Compact Player List Item 1 -->
+<div class="flex items-center justify-between px-md py-sm border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant font-label-md text-label-md">
+                            CS
+                        </div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Carlos Silva</p>
+</div>
+<span class="inline-flex items-center gap-1 bg-inverse-primary text-on-primary-fixed-variant font-label-md text-label-md px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined" style="font-size: 14px; font-variation-settings: 'FILL' 1;">verified</span>
+                            Mensalista
+                        </span>
+</div>
+<!-- Compact Player List Item 2 -->
+<div class="flex items-center justify-between px-md py-sm border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant font-label-md text-label-md">
+                            RA
+                        </div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Rafael Almeida</p>
+</div>
+<span class="inline-flex items-center gap-1 bg-inverse-primary text-on-primary-fixed-variant font-label-md text-label-md px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined" style="font-size: 14px; font-variation-settings: 'FILL' 1;">verified</span>
+                            Mensalista
+                        </span>
+</div>
+<!-- Compact Player List Item 3 (Avulso) -->
+<div class="flex items-center justify-between px-md py-sm">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant font-label-md text-label-md">
+                            JP
+                        </div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">João Pedro</p>
+</div>
+<span class="inline-flex items-center gap-1 bg-surface-variant text-on-surface-variant font-label-md text-label-md px-2 py-0.5 rounded-full">
+                            Avulso
+                        </span>
+</div>
+</div>
+</section>
+<!-- Section: Fila de Espera -->
+<section class="mb-lg">
+<h2 class="font-headline-md text-headline-md text-on-background mb-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">hourglass_empty</span>
+                Fila de Espera
+            </h2>
+<div class="bg-surface-variant border border-outline-variant border-dashed rounded-xl overflow-hidden opacity-90">
+<!-- Waitlist List Item 1 -->
+<div class="flex items-center justify-between px-md py-sm border-b border-outline-variant border-dashed">
+<div class="flex items-center gap-3">
+<div class="font-label-md text-label-md text-on-surface-variant w-4 text-center">
+                        1º
+                    </div>
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant font-label-md text-label-md">
+                        LM
+                    </div>
+<p class="font-body-md text-body-md text-on-surface">Lucas Moura</p>
+</div>
+<span class="bg-error-container text-on-error-container font-label-md text-label-md px-2 py-0.5 rounded-full">
+                        Aguardando
+                    </span>
+</div>
+<!-- Waitlist List Item 2 -->
+<div class="flex items-center justify-between px-md py-sm">
+<div class="flex items-center gap-3">
+<div class="font-label-md text-label-md text-on-surface-variant w-4 text-center">
+                        2º
+                    </div>
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant font-label-md text-label-md">
+                        BC
+                    </div>
+<p class="font-body-md text-body-md text-on-surface">Bruno Costa</p>
+</div>
+<span class="bg-error-container text-on-error-container font-label-md text-label-md px-2 py-0.5 rounded-full">
+                        Aguardando
+                    </span>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Button (FAB) -->
+<button aria-label="Entrar na Lista" class="fixed bottom-24 right-4 bg-pitch-green-container text-white h-14 px-6 rounded-lg shadow-lg flex items-center justify-center gap-2 hover:opacity-90 transition-colors z-40 active:scale-95 font-label-md text-label-md shadow-md">
+<span class="material-symbols-outlined" style="font-size: 24px;">add</span>
+    Entrar na Lista
+</button>
+<!-- BottomNavBar -->
+<nav class="bg-surface border-t border-outline-variant shadow-md fixed bottom-0 w-full md:hidden z-50 flex justify-around items-center px-4 pb-4 pt-2">
+<div class="flex flex-col items-center justify-center text-on-surface-variant scale-95 transition-transform duration-100 cursor-pointer active:bg-surface-variant rounded-lg p-2">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-lg px-4 py-1 scale-95 transition-transform duration-100 cursor-pointer active:bg-surface-variant">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">sports_soccer</span>
+<span class="font-label-md text-label-md mt-1">Matches</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant scale-95 transition-transform duration-100 cursor-pointer active:bg-surface-variant rounded-lg p-2">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-md text-label-md mt-1">Rankings</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant scale-95 transition-transform duration-100 cursor-pointer active:bg-surface-variant rounded-lg p-2">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md mt-1">Profile</span>
+</div>
+</nav>
+</body></html>

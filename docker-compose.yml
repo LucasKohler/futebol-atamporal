@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-futebol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-futebol}
+      POSTGRES_DB: ${POSTGRES_DB:-futebol_atemporal}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-futebol} -d ${POSTGRES_DB:-futebol_atemporal}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:5080
+      Database__UseSqlite: "false"
+      ConnectionStrings__Default: ${ConnectionStrings__Default:-Host=postgres;Port=5432;Database=futebol_atemporal;Username=futebol;Password=futebol}
+      Cors__Origins__0: ${Cors__Origins__0:-http://localhost:3000}
+      Seed__AdminEmail: ${Seed__AdminEmail:-admin@futebolatemporal.local}
+      Seed__AdminPassword: ${Seed__AdminPassword:-Admin123!}
+    ports:
+      - "5080:5080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5080}
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5080}
+      API_ORIGIN: ${API_ORIGIN:-http://api:5080}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

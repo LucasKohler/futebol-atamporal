@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard - PitchPerfect</title>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container-highest": "#d3e4fe",
+                "surface-ice": "#f8f9ff",
+                "primary-fixed-dim": "#97d3b9",
+                "outline": "#707974",
+                "on-primary": "#ffffff",
+                "surface": "#f8f9ff",
+                "outline-variant": "#bfc9c2",
+                "surface-container-lowest": "#ffffff",
+                "primary-fixed": "#b3efd4",
+                "error-container": "#ffdad6",
+                "inverse-primary": "#97d3b9",
+                "on-secondary": "#ffffff",
+                "waiting-list-amber": "#d97706",
+                "surface-bright": "#f8f9ff",
+                "secondary-container": "#d5e0f8",
+                "on-secondary-fixed-variant": "#3c475a",
+                "on-error-container": "#93000a",
+                "error-soft": "#ffdad6",
+                "surface-variant": "#d3e4fe",
+                "surface-container-high": "#dce9ff",
+                "on-tertiary-fixed-variant": "#73342f",
+                "on-tertiary-fixed": "#3b0908",
+                "on-secondary-container": "#586377",
+                "error": "#ba1a1a",
+                "surface-dim": "#cbdbf5",
+                "surface-tint": "#2f6953",
+                "secondary": "#545f73",
+                "surface-container-low": "#eff4ff",
+                "on-tertiary-container": "#e49088",
+                "on-surface": "#0b1c30",
+                "on-error": "#ffffff",
+                "on-primary-fixed-variant": "#12503c",
+                "surface-container": "#e5eeff",
+                "inverse-surface": "#213145",
+                "surface-border": "#bec9c2",
+                "primary-container": "#004532",
+                "on-primary-container": "#78b299",
+                "on-surface-variant": "#404944",
+                "pitch-green-container": "#065f46",
+                "primary": "#002d1f",
+                "on-secondary-fixed": "#111c2d",
+                "background": "#f8f9ff",
+                "secondary-fixed-dim": "#bcc7de",
+                "inverse-on-surface": "#eaf1ff",
+                "on-primary-fixed": "#002116",
+                "on-tertiary": "#ffffff",
+                "tertiary-fixed": "#ffdad6",
+                "secondary-fixed": "#d8e3fb",
+                "tertiary": "#491411",
+                "on-background": "#0b1c30",
+                "tertiary-container": "#652925",
+                "tertiary-fixed-dim": "#ffb3ac"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "md": "16px",
+                "container-max": "1280px",
+                "gutter": "24px",
+                "lg": "24px",
+                "xl": "40px",
+                "xs": "4px",
+                "sm": "8px"
+        },
+        "fontFamily": {
+                "label-sm": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "label-md": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "label-sm": [
+                        "10px",
+                        {
+                                "lineHeight": "12px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-md": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md flex min-h-screen">
+<!-- NavigationDrawer -->
+<aside class="bg-surface dark:bg-surface-dim h-screen w-64 hidden md:flex flex-col border-r border-outline-variant dark:border-outline flat no shadows fixed left-0 top-0 z-40">
+<div class="p-6 border-b border-outline-variant flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-pitch-green-container text-on-primary flex items-center justify-center font-headline-md text-headline-md">
+                PP
+            </div>
+<div>
+<h2 class="font-headline-md text-headline-md text-pitch-green-container">Admin Panel</h2>
+<p class="font-label-md text-label-md text-on-surface-variant">Match Organizer</p>
+<p class="font-label-sm text-[10px] uppercase font-bold text-secondary">Weekly League</p>
+</div>
+</div>
+<nav class="flex-1 py-4 flex flex-col gap-2">
+<!-- Active Nav -->
+<a class="cursor-pointer bg-pitch-green-container text-on-primary rounded-r-full font-bold font-label-md text-label-md flex items-center gap-4 px-6 py-3 mr-4 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                Dashboard
+            </a>
+<!-- Inactive Nav -->
+<a class="cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 font-label-md text-label-md flex items-center gap-4 px-6 py-3 mr-4 rounded-r-full" href="#">
+<span class="material-symbols-outlined">group</span>
+                Mensalistas
+            </a>
+<a class="cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 font-label-md text-label-md flex items-center gap-4 px-6 py-3 mr-4 rounded-r-full" href="#">
+<span class="material-symbols-outlined">shuffle</span>
+                Sorteio
+            </a>
+<a class="cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 font-label-md text-label-md flex items-center gap-4 px-6 py-3 mr-4 rounded-r-full" href="#">
+<span class="material-symbols-outlined">history</span>
+                Histórico
+            </a>
+<a class="cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 font-label-md text-label-md flex items-center gap-4 px-6 py-3 mr-4 rounded-r-full" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+                Rankings
+            </a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 ml-0 md:ml-64 flex flex-col min-h-screen w-full">
+<!-- TopAppBar -->
+<header class="bg-background dark:bg-on-background w-full top-0 sticky border-b border-outline-variant dark:border-outline flat no shadows z-30">
+<div class="flex justify-between items-center px-lg py-4 max-w-container-max mx-auto">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-pitch-green-container dark:text-primary-fixed text-3xl">sports_soccer</span>
+<h1 class="font-display text-display text-pitch-green-container dark:text-primary-fixed tracking-tight">PitchPerfect</h1>
+</div>
+<div>
+<button class="cursor-pointer active:opacity-80 text-pitch-green-container dark:text-primary-fixed hover:text-primary-container dark:hover:text-primary-fixed-variant transition-colors p-2 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 p-lg md:p-xl max-w-container-max mx-auto w-full flex flex-col gap-xl">
+<!-- Page Header & Quick Actions -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-background">Visão Geral da Partida</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Quinta-feira, 20:00 - Arena Central</p>
+</div>
+<div class="flex flex-wrap gap-3">
+<button class="bg-pitch-green-container text-on-primary font-label-md text-label-md px-6 py-3 rounded-full flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">shuffle</span>
+                        Sortear Times
+                    </button>
+<button class="border border-outline text-on-surface font-label-md text-label-md px-6 py-3 rounded-full flex items-center gap-2 hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-sm">edit</span>
+                        Editar Partida
+                    </button>
+</div>
+</div>
+<!-- Metric Cards (Bento Grid Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Card 1 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-6 flex flex-col gap-2">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-surface-variant">Inscritos</span>
+<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">groups</span>
+</div>
+</div>
+<div class="font-display text-display text-on-background">24<span class="font-headline-md text-headline-md text-on-surface-variant">/24</span></div>
+<div class="w-full bg-surface-variant rounded-full h-1.5 mt-2">
+<div class="bg-pitch-green-container h-1.5 rounded-full" style="width: 100%"></div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-error-container border border-error-container rounded-xl p-6 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] transition-all duration-300 flex flex-col gap-2 relative overflow-hidden">
+<div class="flex justify-between items-start relative z-10">
+<span class="font-label-md text-label-md text-on-error-container">Vagas Restantes</span>
+<div class="w-8 h-8 rounded-full bg-error text-on-error flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">person_add_disabled</span>
+</div>
+</div>
+<div class="font-display text-display text-on-error-container relative z-10">0</div>
+<p class="font-label-md text-label-md text-error relative z-10 mt-auto flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">warning</span> Lista de espera ativa (3)
+                    </p>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-6 flex flex-col gap-2">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-surface-variant">Mensalistas Confirmados</span>
+<div class="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+</div>
+</div>
+<div class="font-display text-display text-on-background">18</div>
+<p class="font-label-md text-label-md text-on-surface-variant mt-auto">75% do elenco</p>
+</div>
+<!-- Card 4 -->
+<div class="bg-tertiary-container border border-tertiary-container rounded-xl p-6 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05)] transition-all duration-300 flex flex-col gap-2 relative overflow-hidden">
+<div class="flex justify-between items-start z-10 relative">
+<span class="font-label-md text-label-md text-on-tertiary-container">Pagamentos Pendentes</span>
+<div class="w-8 h-8 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">payments</span>
+</div>
+</div>
+<div class="font-display text-display text-on-tertiary-container z-10 relative"><span class="font-headline-md text-headline-md">R$</span> 150</div>
+<button class="mt-4 text-on-tertiary-container font-label-md text-label-md flex items-center gap-1 hover:underline z-10 relative self-start">
+                        Analisar Pendências <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Detailed Player List -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden flex flex-col">
+<div class="p-6 border-b border-outline-variant flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface-bright">
+<h3 class="font-headline-md text-headline-md text-on-background">Roster da Partida</h3>
+<!-- Filters -->
+<div class="flex bg-surface-container rounded-lg p-1">
+<button class="px-4 py-2 rounded-md bg-surface text-on-surface font-label-md text-label-md shadow-sm">Todos</button>
+<button class="px-4 py-2 rounded-md text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant transition-colors">Confirmados</button>
+<button class="px-4 py-2 rounded-md text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant transition-colors">Pendentes</button>
+</div>
+</div>
+<!-- Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-lowest border-b border-outline-variant">
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant font-normal">Jogador</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant font-normal">Categoria</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant font-normal">Status</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant font-normal">Pagamento</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant font-normal text-right">Ações</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A close up portrait of a young athletic man in a modern dark green sports jersey standing in front of a slightly blurred bright indoor football pitch setting. The lighting is high-key and professional, emphasizing an energetic and healthy aesthetic suitable for a modern SaaS sports app avatar." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuvqLSoL9PhIHiDD4okQ4oyaUt71obyhfWB7k_wnuhqzxFUibAFc141zRxOlEDIqEtkWZJtyvQrSaJePhXEZ3cE61GVu1rzeN66wUsfEA8C6NhHvxAOp_jfezZy2eGU7kAZ4RCAdYYMXQjhpy5JxY7JjbQ7rMMXCbze8aY7HwSexQwOK70xzG_vGhuOzOOFY2ARlFb1qqHcwO5bm8ykktx-iZeCNDZSrPHqto9ICPhsIu9b15bJP1wWw"/>
+<div>
+<p class="font-label-md text-[14px] text-on-background">Carlos Silva</p>
+<p class="font-body-md text-[12px] text-on-surface-variant">Meio-Campo</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-secondary-container text-on-secondary-container">
+                                        Mensalista
+                                    </span>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-1.5 text-pitch-green-container">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md">Confirmado</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-[14px] text-on-surface-variant">Pago (Plano)</span>
+</td>
+<td class="py-4 px-6 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-error-container rounded-full transition-colors" title="Remover">
+<span class="material-symbols-outlined text-[18px]">person_remove</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-pitch-green-container hover:bg-surface-variant rounded-full transition-colors" title="Mais Opções">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="bg-error-container/30 hover:bg-error-container/50 transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center font-label-md text-label-md text-on-surface-variant border border-outline-variant">
+                                            MR
+                                        </div>
+<div>
+<p class="font-label-md text-[14px] text-on-background">Marcos Rodrigues</p>
+<p class="font-body-md text-[12px] text-on-surface-variant">Atacante</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-variant text-on-surface-variant">
+                                        Avulso
+                                    </span>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-1.5 text-pitch-green-container">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md">Confirmado</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-error">error</span>
+<span class="font-label-md text-label-md text-error">Pendente (R$ 30)</span>
+</div>
+</td>
+<td class="py-4 px-6 text-right">
+<div class="flex justify-end gap-2">
+<button class="px-3 py-1 bg-tertiary-container text-on-tertiary-container font-label-md text-label-md rounded-md hover:opacity-90 transition-opacity flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">check</span> Confirmar
+                                    </button>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-error-container rounded-full transition-colors" title="Remover">
+<span class="material-symbols-outlined text-[18px]">person_remove</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A close up portrait of an athletic man looking slightly away from the camera, wearing a generic gray sports t-shirt. The background is a clean, modern white wall of a locker room with soft diffused lighting, matching a minimalist corporate SaaS interface aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjoxpgNIk5JFGMPAMB1l6gWQsnK74BOrCegs8I81tklHdprE19GvZNx6VWGeH2OujX16ZKe_P-a2ucLtW2YnkPXKbJYVjj6mE33gQvgPgZjlbFaEaVxXaWDUToePrO20xYOVJPNqBrRaFsgMGgN_yh9j4bBHHKzOCaJcHQWJDUIrHnkQorCPaGlOlUs-6nTczHVBd1kftI4HLXUkJoa8TBkKE_fP0BB0qL5y1OnJJwrhS2W4fmqoK4Pw"/>
+<div>
+<p class="font-label-md text-[14px] text-on-background">João Pedro</p>
+<p class="font-body-md text-[12px] text-on-surface-variant">Zagueiro</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-variant text-on-surface-variant">
+                                        Convidado
+                                    </span>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-1.5 text-waiting-list-amber">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">schedule</span>
+<span class="font-label-md text-label-md">Lista de Espera</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-[14px] text-on-surface-variant">-</span>
+</td>
+<td class="py-4 px-6 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 text-on-surface-variant hover:text-pitch-green-container hover:bg-surface-variant rounded-full transition-colors" title="Mover para Confirmados">
+<span class="material-symbols-outlined text-[18px]">move_up</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-error-container rounded-full transition-colors" title="Remover">
+<span class="material-symbols-outlined text-[18px]">person_remove</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 border-t border-outline-variant bg-surface-container-lowest flex justify-center">
+<button class="font-label-md text-label-md text-pitch-green-container hover:underline flex items-center gap-1">
+                        Ver todos os inscritos <span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+</div>
+</main>
+</div>
+</body></html>
