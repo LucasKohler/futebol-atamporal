@@ -8,6 +8,13 @@ Regras de negócio centralizadas. Hipóteses adotadas no autopilot estão marcad
 - Papéis: `Player`, `Admin` (via `GroupMembership`).
 - **[H]** Um usuário pode pertencer a múltiplos grupos; a UI inicial assume o grupo padrão do seed.
 
+## 1.1 Identidade
+
+- Identificador único: celular BR normalizado (só dígitos; `55` de país é removido).
+- Cadastro: celular + nome. O jogador não altera o nome depois.
+- Login: só o celular, sem senha.
+- Apelido: só admin. Exibição = apelido se preenchido, senão nome cadastrado.
+
 ## 2. Partida — ciclo de vida
 
 | Status | Significado |

@@ -4,22 +4,27 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { tryNormalize } from "@/lib/phone";
 import { useSession } from "@/lib/useSession";
 
 export default function LoginPage() {
   const router = useRouter();
   const { applyUser } = useSession(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    const normalized = tryNormalize(phone);
+    if (!normalized.ok) {
+      setError(normalized.error);
+      return;
+    }
+    setLoading(true);
     try {
-      const user = await api.login(email, password);
+      const user = await api.login(normalized.phone);
       await applyUser(user);
       router.replace("/");
     } catch (err) {
@@ -38,30 +43,18 @@ export default function LoginPage() {
         </div>
         <form onSubmit={onSubmit} className="flex flex-col gap-md" noValidate>
           <div>
-            <label htmlFor="email" className="mb-1 block text-label-md text-on-surface">
-              Email
+            <label htmlFor="phone" className="mb-1 block text-label-md text-on-surface">
+              Celular
             </label>
             <input
-              id="email"
-              type="email"
-              autoComplete="email"
+              id="phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-3 text-body-md"
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="mb-1 block text-label-md text-on-surface">
-              Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              placeholder="11 99999-9999"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-3 text-body-md"
             />
           </div>

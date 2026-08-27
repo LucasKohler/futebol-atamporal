@@ -13,12 +13,12 @@ Base: `http://localhost:5080` · Auth: cookie `fa_auth` · JSON camelCase · err
 
 | Método | Path | Descrição |
 |--------|------|-----------|
-| POST | `/api/auth/register` | Cadastro + cookie |
-| POST | `/api/auth/login` | Login |
+| POST | `/api/auth/register` | `{ phone, displayName }` + cookie |
+| POST | `/api/auth/login` | `{ phone }` + cookie |
 | POST | `/api/auth/logout` | Logout |
-| GET | `/api/auth/me` | Usuário + memberships |
+| GET | `/api/auth/me` | Usuário + memberships (`phone`, `registeredName`, `nickname`, `displayName`) |
 
-Rate limit: ~30 req/min por IP em login/register.
+Rate limit: não aplicável neste tamanho de grupo.
 
 ## Groups
 
@@ -26,6 +26,8 @@ Rate limit: ~30 req/min por IP em login/register.
 |--------|------|
 | GET | `/api/groups/current` |
 | GET | `/api/groups/{groupId}` |
+| GET | `/api/groups/{groupId}/players` | Lista jogadores (admin) |
+| PUT | `/api/groups/{groupId}/players/{playerProfileId}/nickname` | Apelido fixo (admin) |
 
 ## Matches & registrations
 

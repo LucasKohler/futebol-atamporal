@@ -8,7 +8,7 @@ Pensado para grupos pequenos (**até ~50 usuários**): monólito modular simples
 
 | Área | O que faz |
 |------|-----------|
-| Auth | Cadastro, login, cookie HTTP-only (`fa_auth`) |
+| Auth | Cadastro celular+nome, login só celular, cookie `fa_auth`, apelido admin |
 | Partidas | CRUD, estados, inscrição/desistência, capacidade |
 | Fila | Waitlist + promoção; mensalistas sobem primeiro |
 | Mensalistas | Vínculo, competências e lançamentos de pagamento |
@@ -61,7 +61,7 @@ npm run dev
 | Health | http://localhost:5080/health |
 | Swagger | http://localhost:5080/swagger |
 
-**Admin seed:** `admin@futebolatemporal.local` / `Admin123!`
+**Admin seed:** celular `11999999999` (nome Administrador). Sem senha.
 
 ## Docker Compose
 

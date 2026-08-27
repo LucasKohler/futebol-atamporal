@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { api, RankingRow } from "@/lib/api";
+import { playerDisplayName } from "@/lib/playerDisplayName";
 import { useSession } from "@/lib/useSession";
 
 export default function RankingsPage() {
@@ -47,7 +48,7 @@ export default function RankingsPage() {
             <div className="flex items-center gap-3">
               <span className="w-6 text-label-md text-on-surface-variant">{i + 1}</span>
               <div>
-                <p className="font-semibold">{r.displayName}</p>
+                <p className="font-semibold">{playerDisplayName(r.displayName)}</p>
                 <p className="text-label-md text-on-surface-variant">
                   {r.matches} jogos · {r.wins}V {r.losses}D · {(r.winRate * 100).toFixed(0)}%
                 </p>

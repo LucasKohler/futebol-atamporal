@@ -1,6 +1,7 @@
 using FutebolAtemporal.Domain.Entities;
 using FutebolAtemporal.Domain.Enums;
 using FutebolAtemporal.Domain.Exceptions;
+using FutebolAtemporal.Domain.Services;
 using FutebolAtemporal.Infrastructure.Identity;
 using FutebolAtemporal.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -32,7 +33,7 @@ internal static class AccessHelper
     public static async Task<string> DisplayNameAsync(UserManager<ApplicationUser> users, Guid userId)
     {
         var user = await users.FindByIdAsync(userId.ToString());
-        return user?.DisplayName ?? user?.Email ?? "Jogador";
+        return PlayerDisplayName.Effective(user?.DisplayName ?? string.Empty, user?.Nickname);
     }
 
     public static async Task<Dictionary<Guid, string>> DisplayNamesForProfilesAsync(
@@ -45,11 +46,11 @@ internal static class AccessHelper
             from p in db.PlayerProfiles.AsNoTracking()
             join u in db.Users.AsNoTracking() on p.UserId equals u.Id
             where ids.Contains(p.Id)
-            select new { p.Id, u.DisplayName, u.Email }
+            select new { p.Id, u.DisplayName, u.Nickname }
         ).ToListAsync(ct);
 
         return rows.ToDictionary(
             r => r.Id,
-            r => string.IsNullOrWhiteSpace(r.DisplayName) ? (r.Email ?? "Jogador") : r.DisplayName);
+            r => PlayerDisplayName.Effective(r.DisplayName, r.Nickname));
     }
 }

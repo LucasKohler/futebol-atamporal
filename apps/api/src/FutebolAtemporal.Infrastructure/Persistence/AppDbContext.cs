@@ -174,6 +174,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         builder.Entity<ApplicationUser>(e =>
         {
             e.Property(x => x.DisplayName).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Nickname).HasMaxLength(80);
         });
     }
 }

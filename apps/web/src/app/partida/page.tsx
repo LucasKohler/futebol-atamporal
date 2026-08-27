@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { api, MatchDetail } from "@/lib/api";
+import { playerDisplayName } from "@/lib/playerDisplayName";
 import { matchStatusLabel, registrationStatusLabel, useSession } from "@/lib/useSession";
 
 function formatWhen(iso: string) {
@@ -179,7 +180,9 @@ export default function PartidaPage() {
             />
           </>
         )}
-        <p className="text-label-md text-on-surface-variant">Olá, {user?.displayName}</p>
+        <p className="text-label-md text-on-surface-variant">
+          Olá, {playerDisplayName(user?.registeredName, user?.nickname)}
+        </p>
       </div>
     </AppShell>
   );
@@ -212,7 +215,7 @@ function PlayerList({
               <div className="flex items-center gap-3">
                 {waitlist ? <span className="w-6 text-label-md text-on-surface-variant">{p.waitlistPosition}º</span> : null}
                 <div>
-                  <p className="text-body-md font-semibold">{p.displayName}</p>
+                  <p className="text-body-md font-semibold">{playerDisplayName(p.displayName)}</p>
                   <p className="text-label-md text-on-surface-variant">Nível {p.skillRating.toFixed(1)}</p>
                 </div>
               </div>

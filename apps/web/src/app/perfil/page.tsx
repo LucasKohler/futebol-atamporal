@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { api } from "@/lib/api";
+import { playerDisplayName } from "@/lib/playerDisplayName";
 import { useSession } from "@/lib/useSession";
 
 type History = Awaited<ReturnType<typeof api.playerHistory>>;
@@ -22,8 +23,13 @@ export default function PerfilPage() {
 
   return (
     <AppShell>
-      <h1 className="text-headline-lg">{history?.displayName ?? user?.displayName}</h1>
-      <p className="text-body-md text-on-surface-variant">{user?.email}</p>
+      <h1 className="text-headline-lg">
+        {playerDisplayName(user?.registeredName ?? history?.displayName, user?.nickname)}
+      </h1>
+      <p className="text-body-md text-on-surface-variant">{user?.phone}</p>
+      {user?.nickname ? (
+        <p className="text-label-md text-on-surface-variant">Nome cadastrado: {user.registeredName}</p>
+      ) : null}
       <p className="mt-2 text-label-md">Nível técnico: {history?.skillRating?.toFixed(1) ?? "—"}</p>
 
       <div className="mt-lg grid grid-cols-2 gap-md">

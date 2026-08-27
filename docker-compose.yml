@@ -25,8 +25,7 @@ services:
       Database__UseSqlite: "false"
       ConnectionStrings__Default: ${ConnectionStrings__Default:-Host=postgres;Port=5432;Database=futebol_atemporal;Username=futebol;Password=futebol}
       Cors__Origins__0: ${Cors__Origins__0:-http://localhost:3000}
-      Seed__AdminEmail: ${Seed__AdminEmail:-admin@futebolatemporal.local}
-      Seed__AdminPassword: ${Seed__AdminPassword:-Admin123!}
+      Seed__AdminPhone: ${Seed__AdminPhone:-11999999999}
     ports:
       - "5080:5080"
     depends_on:

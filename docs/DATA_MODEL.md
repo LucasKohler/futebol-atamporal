@@ -22,8 +22,8 @@ FootballGroup ──< AuditEntry
 
 ### User (Identity)
 
-- Id (Guid), Email, PasswordHash, DisplayName, IsActive, CreatedAt
-- Identity roles globais mínimas; autorização de negócio via `GroupMembership`
+- Id (Guid), UserName = celular normalizado, DisplayName (nome cadastrado), Nickname? (apelido admin), IsActive, CreatedAt
+- Sem e-mail/senha no fluxo; Identity permanece para cookie/sessão
 
 ### PlayerProfile
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { api, MatchDetail } from "@/lib/api";
+import { playerDisplayName } from "@/lib/playerDisplayName";
 import { matchStatusLabel, registrationStatusLabel, useSession } from "@/lib/useSession";
 
 export default function HomePage() {
@@ -43,7 +44,7 @@ export default function HomePage() {
       <div className="flex flex-col gap-lg">
         <section>
           <p className="text-label-sm uppercase text-on-surface-variant">Olá</p>
-          <h1 className="text-headline-lg">{user?.displayName}</h1>
+          <h1 className="text-headline-lg">{playerDisplayName(user?.registeredName, user?.nickname)}</h1>
           <p className="mt-1 text-body-md text-on-surface-variant">{group?.name}</p>
         </section>
 

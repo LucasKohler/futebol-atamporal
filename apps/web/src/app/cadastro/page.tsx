@@ -4,23 +4,28 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { tryNormalize } from "@/lib/phone";
 import { useSession } from "@/lib/useSession";
 
 export default function RegisterPage() {
   const router = useRouter();
   const { applyUser } = useSession(false);
   const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    const normalized = tryNormalize(phone);
+    if (!normalized.ok) {
+      setError(normalized.error);
+      return;
+    }
+    setLoading(true);
     try {
-      const user = await api.register(email, password, displayName);
+      const user = await api.register(normalized.phone, displayName);
       await applyUser(user);
       router.replace("/");
     } catch (err) {
@@ -44,39 +49,30 @@ export default function RegisterPage() {
             </label>
             <input
               id="displayName"
+              autoComplete="name"
               required
+              minLength={2}
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-3 text-body-md"
             />
+            <p className="mt-1 text-label-md text-on-surface-variant">O nome não pode ser alterado depois.</p>
           </div>
           <div>
-            <label htmlFor="email" className="mb-1 block text-label-md text-on-surface">
-              Email
+            <label htmlFor="phone" className="mb-1 block text-label-md text-on-surface">
+              Celular
             </label>
             <input
-              id="email"
-              type="email"
+              id="phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="11 99999-9999"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-3 text-body-md"
             />
-          </div>
-          <div>
-            <label htmlFor="password" className="mb-1 block text-label-md text-on-surface">
-              Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-3 text-body-md"
-            />
-            <p className="mt-1 text-label-md text-on-surface-variant">Mínimo 8 caracteres, com maiúscula e número.</p>
           </div>
           {error ? (
             <p role="alert" className="rounded-lg bg-error-container px-3 py-2 text-body-md text-on-error-container">

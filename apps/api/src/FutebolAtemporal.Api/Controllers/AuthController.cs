@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FutebolAtemporal.Application.Abstractions;
 using FutebolAtemporal.Application.Auth;
+using FutebolAtemporal.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -50,6 +51,18 @@ public sealed class AuthController : ControllerBase
         if (me is null) return Unauthorized();
         return Ok(me);
     }
+
+    [HttpPut("me")]
+    [HttpPatch("me")]
+    [Authorize]
+    public IActionResult UpdateMe([FromBody] UpdateProfileRequest request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.DisplayName))
+            throw new ForbiddenException("O nome cadastrado não pode ser alterado.");
+        if (request.Nickname is not null)
+            throw new ForbiddenException("Apenas administradores definem apelido.");
+        return NoContent();
+    }
 }
 
 [ApiController]
@@ -80,4 +93,12 @@ public sealed class GroupsController : ControllerBase
         if (group is null) return NotFound(new { title = "Grupo não encontrado" });
         return Ok(group);
     }
+
+    [HttpGet("{groupId:guid}/players")]
+    public async Task<IActionResult> Players(Guid groupId, CancellationToken ct)
+        => Ok(await _groups.ListPlayersAsync(User.GetUserId(), groupId, ct));
+
+    [HttpPut("{groupId:guid}/players/{playerProfileId:guid}/nickname")]
+    public async Task<IActionResult> Nickname(Guid groupId, Guid playerProfileId, [FromBody] SetNicknameRequest body, CancellationToken ct)
+        => Ok(await _groups.SetNicknameAsync(User.GetUserId(), groupId, playerProfileId, body.Nickname, ct));
 }

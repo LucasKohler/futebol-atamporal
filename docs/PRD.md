@@ -21,9 +21,10 @@ Um usuário pode ser membro de um `FootballGroup` com um ou mais papéis. O aces
 
 ### 3.1 Autenticação e autorização
 
-- Cadastro, login, logout, redefinição de senha
-- Sessão via cookies HTTP-only seguros (sem tokens sensíveis em `localStorage`)
-- Perfis de jogador e administrador
+- Cadastro: celular + nome (nome imutável pelo jogador)
+- Login: apenas o número de celular (normalizado, único; sem senha/e-mail/SMS)
+- Sessão via cookies HTTP-only seguros
+- Admin pode definir apelido fixo; a UI usa apelido se existir, senão o nome cadastrado
 - Proteção de rotas no frontend e autorização no backend
 - Usuários inativos/bloqueados não autenticam
 

@@ -15,8 +15,7 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         {
             builder.UseSetting("Database:UseSqlite", "true");
             builder.UseSetting("ConnectionStrings:Default", $"Data Source=flow-{Guid.NewGuid():N}.db");
-            builder.UseSetting("Seed:AdminEmail", "admin@test.local");
-            builder.UseSetting("Seed:AdminPassword", "Admin123!");
+            builder.UseSetting("Seed:AdminPhone", "11999999999");
         });
     }
 
@@ -24,7 +23,7 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
     public async Task Join_fills_spots_then_waitlist_and_promote_on_leave()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        await client.PostAsJsonAsync("/api/auth/login", new { email = "admin@test.local", password = "Admin123!" });
+        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
 
         var meRes = await client.GetAsync("/api/auth/me");
         var me = await meRes.Content.ReadFromJsonAsync<JsonElement>();
@@ -43,17 +42,14 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         var match = await create.Content.ReadFromJsonAsync<JsonElement>();
         var matchId = match.GetProperty("id").GetGuid();
 
-        // Admin joins -> confirmed
         var join1 = await client.PostAsync($"/api/matches/{matchId}/join", null);
         Assert.Equal(HttpStatusCode.OK, join1.StatusCode);
         var d1 = await join1.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("Confirmed", d1.GetProperty("myStatus").GetString());
 
-        // Second player
         var reg = await client.PostAsJsonAsync("/api/auth/register", new
         {
-            email = $"p2-{Guid.NewGuid():N}@test.local",
-            password = "Player123!",
+            phone = "11988880002",
             displayName = "Jogador Dois"
         });
         Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
@@ -64,11 +60,9 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal("Confirmed", d2.GetProperty("myStatus").GetString());
         Assert.Equal(2, d2.GetProperty("match").GetProperty("confirmedCount").GetInt32());
 
-        // Third -> waitlist
         var reg3 = await client.PostAsJsonAsync("/api/auth/register", new
         {
-            email = $"p3-{Guid.NewGuid():N}@test.local",
-            password = "Player123!",
+            phone = "11988880003",
             displayName = "Jogador Tres"
         });
         Assert.Equal(HttpStatusCode.OK, reg3.StatusCode);
@@ -78,12 +72,7 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal("Waitlisted", d3.GetProperty("myStatus").GetString());
         Assert.Equal(1, d3.GetProperty("myWaitlistPosition").GetInt32());
 
-        // Leave as p3 does nothing for promotion; re-login as admin and leave to promote p3
-        // Actually leave as player 2 (confirmed) while logged as p3 - need player 2 to leave
-        // Login as player 2: we lost cookie. Register returns login. Current cookie is p3.
-        // Leave as p3 (waitlisted) then login admin, remove one confirmed... simpler: admin remove second confirmed.
-
-        await client.PostAsJsonAsync("/api/auth/login", new { email = "admin@test.local", password = "Admin123!" });
+        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
         var detail = await (await client.GetAsync($"/api/matches/{matchId}")).Content.ReadFromJsonAsync<JsonElement>();
         var confirmed = detail.GetProperty("confirmed").EnumerateArray().ToList();
         Assert.Equal(2, confirmed.Count);
@@ -98,5 +87,121 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         var promoted = after.GetProperty("confirmed").EnumerateArray()
             .Any(c => c.GetProperty("displayName").GetString() == "Jogador Tres");
         Assert.True(promoted);
+    }
+
+    [Fact]
+    public async Task Admin_nickname_is_used_on_match_list()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var player = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            phone = "11988880009",
+            displayName = "Carlos Eduardo"
+        });
+        Assert.Equal(HttpStatusCode.OK, player.StatusCode);
+        var playerMe = await player.Content.ReadFromJsonAsync<JsonElement>();
+        var profileId = playerMe.GetProperty("playerProfileId").GetGuid();
+
+        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        var me = await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = me.GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
+
+        var nick = await client.PutAsJsonAsync($"/api/groups/{groupId}/players/{profileId}/nickname", new { nickname = "Cadu" });
+        Assert.Equal(HttpStatusCode.OK, nick.StatusCode);
+
+        var create = await client.PostAsJsonAsync("/api/matches", new
+        {
+            groupId,
+            title = "Nick Test",
+            startsAt = DateTimeOffset.UtcNow.AddDays(2),
+            location = "Arena",
+            playerLimit = 14,
+            openRegistrations = true
+        });
+        var matchId = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11988880009" });
+        var joined = await client.PostAsync($"/api/matches/{matchId}/join", null);
+        var detail = await joined.Content.ReadFromJsonAsync<JsonElement>();
+        var names = detail.GetProperty("confirmed").EnumerateArray().Select(c => c.GetProperty("displayName").GetString()).ToList();
+        Assert.Contains("Cadu", names);
+        Assert.DoesNotContain("Carlos Eduardo", names);
+    }
+
+    [Fact]
+    public async Task Close_match_then_rankings_only_include_completed()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        var me = await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = me.GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
+        var adminProfile = me.GetProperty("playerProfileId").GetGuid();
+
+        var create = await client.PostAsJsonAsync("/api/matches", new
+        {
+            groupId,
+            title = "Fechamento",
+            startsAt = DateTimeOffset.UtcNow.AddDays(1),
+            location = "Arena",
+            playerLimit = 14,
+            openRegistrations = true
+        });
+        var matchId = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        await client.PostAsync($"/api/matches/{matchId}/join", null);
+
+        await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988880021", displayName = "Jogador Fechamento" });
+        await client.PostAsync($"/api/matches/{matchId}/join", null);
+        var playerMe = await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>();
+        var playerProfile = playerMe.GetProperty("playerProfileId").GetGuid();
+
+        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        await client.PostAsJsonAsync($"/api/matches/{matchId}/transition", new { status = "RegistrationClosed" });
+        var drawRes = await client.PostAsJsonAsync($"/api/matches/{matchId}/draw", new { seed = "close-test" });
+        Assert.Equal(HttpStatusCode.OK, drawRes.StatusCode);
+        var draw = await drawRes.Content.ReadFromJsonAsync<JsonElement>();
+        var drawId = draw.GetProperty("id").GetGuid();
+        var confirm = await client.PostAsync($"/api/matches/{matchId}/draw/{drawId}/confirm", null);
+        Assert.Equal(HttpStatusCode.OK, confirm.StatusCode);
+        var winnerTeamId = draw.GetProperty("teams")[0].GetProperty("id").GetGuid();
+
+        var close = await client.PostAsJsonAsync($"/api/matches/{matchId}/result/close", new
+        {
+            homeScore = 3,
+            awayScore = 1,
+            winnerTeamId,
+            manOfTheMatchPlayerProfileId = playerProfile,
+            notes = "ok",
+            presence = new[]
+            {
+                new { playerProfileId = adminProfile, present = true },
+                new { playerProfileId = playerProfile, present = true }
+            },
+            ratings = new[]
+            {
+                new { playerProfileId = adminProfile, score = 7 },
+                new { playerProfileId = playerProfile, score = 8 }
+            }
+        });
+        Assert.Equal(HttpStatusCode.OK, close.StatusCode);
+
+        var open = await client.PostAsJsonAsync("/api/matches", new
+        {
+            groupId,
+            title = "Ainda aberta",
+            startsAt = DateTimeOffset.UtcNow.AddDays(8),
+            location = "Arena",
+            playerLimit = 14,
+            openRegistrations = true
+        });
+        Assert.Equal(HttpStatusCode.OK, open.StatusCode);
+
+        var ranks = await (await client.GetAsync($"/api/groups/{groupId}/rankings")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(ranks.GetArrayLength() >= 1);
+        var names = ranks.EnumerateArray().Select(r => r.GetProperty("displayName").GetString()).ToList();
+        Assert.Contains("Jogador Fechamento", names);
+        Assert.DoesNotContain("Ainda aberta", names);
+        var row = ranks.EnumerateArray().First(r => r.GetProperty("displayName").GetString() == "Jogador Fechamento");
+        Assert.Equal(1, row.GetProperty("matches").GetInt32());
+        Assert.Equal(1, row.GetProperty("manOfTheMatch").GetInt32());
     }
 }

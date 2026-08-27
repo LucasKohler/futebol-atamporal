@@ -12,10 +12,21 @@ export type Membership = {
 
 export type User = {
   id: string;
-  email: string;
+  phone: string;
+  registeredName: string;
+  nickname?: string | null;
   displayName: string;
   playerProfileId?: string | null;
   memberships: Membership[];
+};
+
+export type GroupPlayer = {
+  playerProfileId: string;
+  registeredName: string;
+  nickname?: string | null;
+  displayName: string;
+  phone: string;
+  isMonthlyMember: boolean;
 };
 
 export type Group = {
@@ -133,20 +144,20 @@ function url(path: string) {
 const jsonHeaders = { "Content-Type": "application/json" };
 
 export const api = {
-  login(email: string, password: string) {
+  login(phone: string) {
     return fetch(url("/api/auth/login"), {
       method: "POST",
       headers: jsonHeaders,
       credentials: "include",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ phone }),
     }).then((r) => parseJson<User>(r));
   },
-  register(email: string, password: string, displayName: string) {
+  register(phone: string, displayName: string) {
     return fetch(url("/api/auth/register"), {
       method: "POST",
       headers: jsonHeaders,
       credentials: "include",
-      body: JSON.stringify({ email, password, displayName }),
+      body: JSON.stringify({ phone, displayName }),
     }).then((r) => parseJson<User>(r));
   },
   logout() {
@@ -218,6 +229,19 @@ export const api = {
       method: "POST",
       credentials: "include",
     }).then((r) => parseJson<MatchDetail>(r));
+  },
+  listPlayers(groupId: string) {
+    return fetch(url(`/api/groups/${groupId}/players`), { credentials: "include" }).then((r) =>
+      parseJson<GroupPlayer[]>(r),
+    );
+  },
+  setNickname(groupId: string, playerProfileId: string, nickname: string | null) {
+    return fetch(url(`/api/groups/${groupId}/players/${playerProfileId}/nickname`), {
+      method: "PUT",
+      headers: jsonHeaders,
+      credentials: "include",
+      body: JSON.stringify({ nickname }),
+    }).then((r) => parseJson<GroupPlayer>(r));
   },
   listMembers(groupId: string) {
     return fetch(url(`/api/groups/${groupId}/memberships`), { credentials: "include" }).then((r) =>

@@ -1,6 +1,7 @@
 using FutebolAtemporal.Application.Abstractions;
 using FutebolAtemporal.Domain.Entities;
 using FutebolAtemporal.Domain.Enums;
+using FutebolAtemporal.Domain.Services;
 using FutebolAtemporal.Infrastructure.Identity;
 using FutebolAtemporal.Infrastructure.Persistence;
 using FutebolAtemporal.Infrastructure.Services;
@@ -38,7 +39,8 @@ public static class DependencyInjection
                 options.Password.RequireUppercase = true;
                 options.Password.RequireLowercase = true;
                 options.Password.RequireNonAlphanumeric = false;
-                options.User.RequireUniqueEmail = true;
+                options.User.RequireUniqueEmail = false;
+                options.Lockout.AllowedForNewUsers = false;
                 options.Lockout.MaxFailedAccessAttempts = 8;
             })
             .AddEntityFrameworkStores<AppDbContext>()
@@ -87,47 +89,106 @@ public static class DependencyInjection
 
         await db.Database.MigrateAsync();
 
-        if (!await db.FootballGroups.AnyAsync())
+        var seedGroupId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var seedAdminId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var seedProfileId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+
+        if (!await db.FootballGroups.AnyAsync(g => g.Id == seedGroupId) && !await db.FootballGroups.AnyAsync())
         {
-            var group = new FootballGroup
+            db.FootballGroups.Add(new FootballGroup
             {
-                Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                Id = seedGroupId,
                 Name = "Futebol Atemporal",
                 Slug = "futebol-atemporal",
                 TimeZoneId = "America/Sao_Paulo",
                 SettingsJson = """{"defaultPlayerLimit":14,"teamCount":2,"defaultMonthlyFee":150}"""
-            };
-            db.FootballGroups.Add(group);
+            });
             await db.SaveChangesAsync();
-            logger.LogInformation("Seeded default football group {GroupId}", group.Id);
+            logger.LogInformation("Seeded default football group {GroupId}", seedGroupId);
         }
 
-        var adminEmail = configuration["Seed:AdminEmail"] ?? "admin@futebolatemporal.local";
-        var adminPassword = configuration["Seed:AdminPassword"] ?? "Admin123!";
-        var admin = await userManager.FindByEmailAsync(adminEmail);
+        if (!PhoneNormalizer.TryNormalize(configuration["Seed:AdminPhone"] ?? "11999999999", out var adminPhone, out var phoneError))
+            throw new InvalidOperationException($"Seed:AdminPhone inválido: {phoneError}");
+
+        var admin = await userManager.FindByIdAsync(seedAdminId.ToString())
+            ?? await userManager.FindByNameAsync(adminPhone);
+
+        if (admin is null)
+        {
+            var legacyEmail = configuration["Seed:AdminEmail"] ?? "admin@futebolatemporal.local";
+            admin = await userManager.FindByEmailAsync(legacyEmail);
+        }
+
+        if (admin is null)
+            admin = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == seedAdminId);
+
+        if (admin is not null && db.Entry(admin).State == EntityState.Detached)
+            db.Attach(admin);
+
         if (admin is null)
         {
             admin = new ApplicationUser
             {
-                Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-                UserName = adminEmail,
-                Email = adminEmail,
+                Id = seedAdminId,
+                UserName = adminPhone,
+                PhoneNumber = adminPhone,
+                PhoneNumberConfirmed = true,
                 DisplayName = "Administrador",
-                EmailConfirmed = true,
                 IsActive = true
             };
-            var created = await userManager.CreateAsync(admin, adminPassword);
+            var created = await userManager.CreateAsync(admin);
             if (!created.Succeeded)
-                throw new InvalidOperationException(string.Join("; ", created.Errors.Select(e => e.Description)));
+            {
+                admin = await userManager.FindByIdAsync(seedAdminId.ToString())
+                    ?? await userManager.FindByNameAsync(adminPhone);
+                if (admin is null)
+                    throw new InvalidOperationException(string.Join("; ", created.Errors.Select(e => e.Description)));
+                logger.LogInformation("Admin already existed; reused {UserId}", admin.Id);
+            }
+            else
+            {
+                logger.LogInformation("Seeded admin user {Phone}", adminPhone);
+            }
+        }
 
+        if (!string.Equals(admin.UserName, adminPhone, StringComparison.Ordinal)
+            || !string.Equals(admin.PhoneNumber, adminPhone, StringComparison.Ordinal)
+            || admin.Email is not null)
+        {
+            admin.UserName = adminPhone;
+            admin.NormalizedUserName = userManager.NormalizeName(adminPhone);
+            admin.PhoneNumber = adminPhone;
+            admin.PhoneNumberConfirmed = true;
+            admin.Email = null;
+            admin.NormalizedEmail = null;
+            var updated = await userManager.UpdateAsync(admin);
+            if (!updated.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", updated.Errors.Select(e => e.Description)));
+            logger.LogInformation("Migrated admin login to phone {Phone}", adminPhone);
+        }
+
+        var profile = await db.PlayerProfiles.FirstOrDefaultAsync(p => p.UserId == admin.Id)
+            ?? await db.PlayerProfiles.FirstOrDefaultAsync(p => p.Id == seedProfileId);
+        if (profile is null)
+        {
             db.PlayerProfiles.Add(new PlayerProfile
             {
-                Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                Id = seedProfileId,
                 UserId = admin.Id,
+                Phone = adminPhone,
                 SkillRating = 7.5m
             });
+        }
+        else
+        {
+            profile.Phone = adminPhone;
+        }
 
-            var group = await db.FootballGroups.OrderBy(g => g.Id).FirstAsync();
+        var group = await db.FootballGroups.OrderBy(g => g.Id).FirstAsync();
+        var membership = await db.GroupMemberships
+            .FirstOrDefaultAsync(m => m.GroupId == group.Id && m.UserId == admin.Id);
+        if (membership is null)
+        {
             db.GroupMemberships.Add(new GroupMembership
             {
                 Id = Guid.NewGuid(),
@@ -136,8 +197,13 @@ public static class DependencyInjection
                 Role = GroupRole.Admin,
                 Status = MembershipStatus.Active
             });
-            await db.SaveChangesAsync();
-            logger.LogInformation("Seeded admin user {Email}", adminEmail);
         }
+        else
+        {
+            membership.Role = GroupRole.Admin;
+            membership.Status = MembershipStatus.Active;
+        }
+
+        await db.SaveChangesAsync();
     }
 }

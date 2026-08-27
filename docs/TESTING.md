@@ -14,7 +14,7 @@ Priorizar risco: regras de domínio e fluxos críticos antes de cobertura cosmé
 ## Fase 1 (smoke)
 
 - API sobe e `/health` retorna Healthy
-- Registro/login/`me` com cookie
+- Registro (celular+nome) / login (só celular) / `me` com cookie
 - Build Next.js e lint
 
 ## Prioridade de testes (fases seguintes)
