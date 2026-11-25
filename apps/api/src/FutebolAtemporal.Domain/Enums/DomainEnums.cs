@@ -64,6 +64,13 @@ public enum TeamDrawStatus
     Superseded = 2
 }
 
+/// <summary>Função do jogador no time sorteado. Sorteios antigos (A/B) ficam como Line.</summary>
+public enum TeamRole
+{
+    Line = 0,
+    Goalkeeper = 1
+}
+
 public enum AwardType
 {
     ManOfTheMatch = 0

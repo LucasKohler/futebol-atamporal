@@ -153,9 +153,13 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         await client.PostAsync($"/api/matches/{matchId}/join", null);
         var playerMe = await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>();
         var playerProfile = playerMe.GetProperty("playerProfileId").GetGuid();
+        // Sorteio de três cores exige ao menos 3 confirmados.
+        await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988880022", displayName = "Terceiro Fechamento" });
+        await client.PostAsync($"/api/matches/{matchId}/join", null);
 
         await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
-        await client.PostAsJsonAsync($"/api/matches/{matchId}/transition", new { status = "RegistrationClosed" });
+        var closeList = await client.PostAsJsonAsync($"/api/matches/{matchId}/transition", new { status = "RegistrationClosed" });
+        Assert.Equal(HttpStatusCode.OK, closeList.StatusCode);
         var drawRes = await client.PostAsJsonAsync($"/api/matches/{matchId}/draw", new { seed = "close-test" });
         Assert.Equal(HttpStatusCode.OK, drawRes.StatusCode);
         var draw = await drawRes.Content.ReadFromJsonAsync<JsonElement>();

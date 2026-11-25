@@ -37,7 +37,7 @@ public sealed record RegistrationPlayerDto(
     string Status,
     string PriorityClass,
     int? WaitlistPosition,
-    decimal SkillRating);
+    decimal? SkillRating); // somente para administradores do grupo
 
 public sealed record MatchDetailDto(
     MatchDto Match,

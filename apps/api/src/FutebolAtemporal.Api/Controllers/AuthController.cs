@@ -101,4 +101,8 @@ public sealed class GroupsController : ControllerBase
     [HttpPut("{groupId:guid}/players/{playerProfileId:guid}/nickname")]
     public async Task<IActionResult> Nickname(Guid groupId, Guid playerProfileId, [FromBody] SetNicknameRequest body, CancellationToken ct)
         => Ok(await _groups.SetNicknameAsync(User.GetUserId(), groupId, playerProfileId, body.Nickname, ct));
+
+    [HttpPut("{groupId:guid}/players/{playerProfileId:guid}/ratings")]
+    public async Task<IActionResult> Ratings(Guid groupId, Guid playerProfileId, [FromBody] SetRatingsRequest body, CancellationToken ct)
+        => Ok(await _groups.SetRatingsAsync(User.GetUserId(), groupId, playerProfileId, body, ct));
 }

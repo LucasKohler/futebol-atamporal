@@ -1,8 +1,10 @@
 using FutebolAtemporal.Application.Abstractions;
 using FutebolAtemporal.Application.Auth;
+using FutebolAtemporal.Domain.Entities;
 using FutebolAtemporal.Domain.Enums;
 using FutebolAtemporal.Domain.Exceptions;
 using FutebolAtemporal.Domain.Services;
+using FutebolAtemporal.Infrastructure.Identity;
 using FutebolAtemporal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -62,7 +64,11 @@ public sealed class GroupQueryService : IGroupQueryService
             join p in _db.PlayerProfiles.AsNoTracking() on u.Id equals p.UserId
             where gm.GroupId == groupId && gm.Status == MembershipStatus.Active
             orderby u.DisplayName
-            select new { p.Id, u.DisplayName, u.Nickname, Phone = u.UserName ?? p.Phone ?? string.Empty }
+            select new
+            {
+                p.Id, u.DisplayName, u.Nickname, Phone = u.UserName ?? p.Phone ?? string.Empty,
+                p.SkillRating, p.CanPlayGoalkeeper, p.GoalkeeperRating
+            }
         ).ToListAsync(ct);
 
         return rows.Select(r => new GroupPlayerDto(
@@ -71,10 +77,35 @@ public sealed class GroupQueryService : IGroupQueryService
             r.Nickname,
             PlayerDisplayName.Effective(r.DisplayName, r.Nickname),
             r.Phone,
-            monthlySet.Contains(r.Id))).ToList();
+            monthlySet.Contains(r.Id),
+            r.SkillRating,
+            r.CanPlayGoalkeeper,
+            r.GoalkeeperRating)).ToList();
     }
 
     public async Task<GroupPlayerDto> SetNicknameAsync(Guid userId, Guid groupId, Guid playerProfileId, string? nickname, CancellationToken ct = default)
+    {
+        var (profile, user) = await RequireGroupPlayerForAdminAsync(userId, groupId, playerProfileId, ct);
+
+        var trimmed = string.IsNullOrWhiteSpace(nickname) ? null : nickname.Trim();
+        if (trimmed is { Length: > 80 })
+            throw new DomainException("Apelido deve ter no máximo 80 caracteres.");
+
+        user.Nickname = trimmed;
+        await _db.SaveChangesAsync(ct);
+        return await ToPlayerDtoAsync(groupId, profile, user, ct);
+    }
+
+    public async Task<GroupPlayerDto> SetRatingsAsync(Guid userId, Guid groupId, Guid playerProfileId, SetRatingsRequest request, CancellationToken ct = default)
+    {
+        var (profile, user) = await RequireGroupPlayerForAdminAsync(userId, groupId, playerProfileId, ct);
+        PlayerRatings.Apply(profile, request.LineRating, request.CanPlayGoalkeeper, request.GoalkeeperRating);
+        await _db.SaveChangesAsync(ct);
+        return await ToPlayerDtoAsync(groupId, profile, user, ct);
+    }
+
+    private async Task<(PlayerProfile Profile, ApplicationUser User)> RequireGroupPlayerForAdminAsync(
+        Guid userId, Guid groupId, Guid playerProfileId, CancellationToken ct)
     {
         await AccessHelper.RequireMemberAsync(_db, userId, groupId, ct, adminOnly: true);
 
@@ -88,16 +119,13 @@ public sealed class GroupQueryService : IGroupQueryService
 
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == profile.UserId, ct)
             ?? throw new DomainException("Usuário não encontrado.");
+        return (profile, user);
+    }
 
-        var trimmed = string.IsNullOrWhiteSpace(nickname) ? null : nickname.Trim();
-        if (trimmed is { Length: > 80 })
-            throw new DomainException("Apelido deve ter no máximo 80 caracteres.");
-
-        user.Nickname = trimmed;
-        await _db.SaveChangesAsync(ct);
-
+    private async Task<GroupPlayerDto> ToPlayerDtoAsync(Guid groupId, PlayerProfile profile, ApplicationUser user, CancellationToken ct)
+    {
         var isMonthly = await _db.MonthlyMemberships.AnyAsync(
-            m => m.GroupId == groupId && m.PlayerProfileId == playerProfileId && m.Status == MonthlyMembershipStatus.Active, ct);
+            m => m.GroupId == groupId && m.PlayerProfileId == profile.Id && m.Status == MonthlyMembershipStatus.Active, ct);
 
         return new GroupPlayerDto(
             profile.Id,
@@ -105,6 +133,9 @@ public sealed class GroupQueryService : IGroupQueryService
             user.Nickname,
             PlayerDisplayName.Effective(user.DisplayName, user.Nickname),
             user.UserName ?? profile.Phone ?? string.Empty,
-            isMonthly);
+            isMonthly,
+            profile.SkillRating,
+            profile.CanPlayGoalkeeper,
+            profile.GoalkeeperRating);
     }
 }

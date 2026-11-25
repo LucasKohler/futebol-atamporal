@@ -43,12 +43,28 @@ public sealed class MatchService : IMatchService
         if (match.Status is MatchStatus.Completed or MatchStatus.Cancelled)
             throw new DomainException("Partida encerrada não pode ser editada.");
 
+        if (request.PlayerLimit < 2)
+            throw new DomainException("Limite de jogadores deve ser pelo menos 2.");
+        // Elenco congelado depois do início: título, local e observações podem mudar; o limite não (promoveria da fila).
+        if (RegistrationPolicy.IsLineupFrozen(match.Status) && request.PlayerLimit != match.PlayerLimit)
+            throw new DomainException("A partida já começou: o limite de jogadores não pode mais mudar, para preservar o elenco.");
+
+        var regs = await _db.MatchRegistrations.Where(r => r.MatchId == matchId).ToListAsync(ct);
+        var confirmed = regs.Count(r => r.Status == RegistrationStatus.Confirmed);
+        if (request.PlayerLimit < confirmed)
+            throw new DomainException($"Há {confirmed} confirmados. Remova inscrições antes de reduzir o limite para {request.PlayerLimit}.");
+
         match.Title = request.Title;
         match.StartsAt = request.StartsAt;
         match.Location = request.Location.Trim();
         match.PlayerLimit = request.PlayerLimit;
         match.Notes = request.Notes;
         match.UpdatedAt = DateTimeOffset.UtcNow;
+        // Limite maior promove a fila na ordem publicada.
+        WaitlistLogic.Rebalance(regs, match.PlayerLimit, match.UpdatedAt.Value);
+        // Promoção por aumento de limite depois do sorteio invalida a escalação confirmada.
+        await DrawRosterGuard.InvalidateIfRosterChangedAsync(
+            _db, match, regs.Where(r => r.Status == RegistrationStatus.Confirmed).Select(r => r.PlayerProfileId), ct);
         match.Version++;
         await _db.SaveChangesAsync(ct);
         return await ToDtoAsync(match, ct);
@@ -114,19 +130,26 @@ public sealed class MatchService : IMatchService
             .ToListAsync(ct);
 
         var names = await AccessHelper.DisplayNamesForProfilesAsync(_db, regs.Select(r => r.PlayerProfileId), ct);
-        var skills = await _db.PlayerProfiles.AsNoTracking()
-            .Where(p => regs.Select(r => r.PlayerProfileId).Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id, p => p.SkillRating, ct);
+        // Notas são dado administrativo: jogador comum recebe a lista sem elas.
+        var isAdmin = await _db.GroupMemberships.AsNoTracking().AnyAsync(
+            m => m.UserId == userId && m.GroupId == match.GroupId
+                 && m.Status == MembershipStatus.Active && m.Role == GroupRole.Admin, ct);
+        var profileIds = regs.Select(r => r.PlayerProfileId).ToList();
+        var skills = isAdmin
+            ? await _db.PlayerProfiles.AsNoTracking()
+                .Where(p => profileIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id, p => (decimal?)p.SkillRating, ct)
+            : new Dictionary<Guid, decimal?>();
 
         RegistrationPlayerDto Map(MatchRegistration r) => new(
             r.Id, r.PlayerProfileId, names.GetValueOrDefault(r.PlayerProfileId, "Jogador"),
             r.Status.ToString(), r.PriorityClass.ToString(), r.WaitlistPosition,
-            skills.GetValueOrDefault(r.PlayerProfileId, 5m));
+            skills.GetValueOrDefault(r.PlayerProfileId));
 
+        // Ordem persistida: confirmados por momento da confirmação; fila pela posição publicada.
         var confirmed = regs.Where(r => r.Status == RegistrationStatus.Confirmed)
-            .OrderBy(r => r.ConfirmedAt?.UtcTicks ?? 0).ThenBy(r => r.Id).Select(Map).ToList();
-        var waitlist = regs.Where(r => r.Status == RegistrationStatus.Waitlisted)
-            .OrderBy(r => r.WaitlistPosition).ThenBy(r => r.Id).Select(Map).ToList();
+            .OrderBy(r => r.ConfirmedAt?.UtcTicks ?? 0).ThenBy(r => r.CreatedAt).ThenBy(r => r.Id).Select(Map).ToList();
+        var waitlist = WaitlistLogic.QueueOrder(regs).Select(Map).ToList();
 
         var profile = await _db.PlayerProfiles.AsNoTracking().FirstAsync(p => p.UserId == userId, ct);
         var mine = regs.FirstOrDefault(r => r.PlayerProfileId == profile.Id);

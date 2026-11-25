@@ -10,6 +10,8 @@ namespace FutebolAtemporal.Infrastructure.Services;
 
 public sealed class RegistrationService : IRegistrationService
 {
+    private const int MaxAttempts = 5;
+
     private readonly AppDbContext _db;
     private readonly IMatchService _matches;
 
@@ -19,174 +21,125 @@ public sealed class RegistrationService : IRegistrationService
         _matches = matches;
     }
 
-    public async Task<MatchDetailDto> JoinAsync(Guid userId, Guid matchId, CancellationToken ct = default)
-    {
-        await using var tx = await _db.Database.BeginTransactionAsync(ct);
-        var match = await _db.Matches.FirstOrDefaultAsync(m => m.Id == matchId, ct)
-            ?? throw new DomainException("Partida não encontrada.");
-        var (_, profile) = await AccessHelper.RequireMemberAsync(_db, userId, match.GroupId, ct);
-        RegistrationPolicy.EnsureCanRegister(match.Status);
-
-        var existing = await _db.MatchRegistrations
-            .FirstOrDefaultAsync(r => r.MatchId == matchId && r.PlayerProfileId == profile.Id, ct);
-
-        if (existing is { Status: RegistrationStatus.Confirmed or RegistrationStatus.Waitlisted })
-            throw new DomainException("Você já está na lista desta partida.");
-
-        var eligibleMonthly = await IsEligibleMonthlyAsync(match.GroupId, profile.Id, ct);
-        var priority = eligibleMonthly ? PriorityClass.Monthly : PriorityClass.Casual;
-
-        var confirmedCount = await _db.MatchRegistrations.CountAsync(
-            r => r.MatchId == matchId && r.Status == RegistrationStatus.Confirmed, ct);
-        var waitCount = await _db.MatchRegistrations.CountAsync(
-            r => r.MatchId == matchId && r.Status == RegistrationStatus.Waitlisted, ct);
-
-        var (status, position) = WaitlistLogic.Place(confirmedCount, match.PlayerLimit, waitCount);
-
-        if (existing is not null)
+    public Task<MatchDetailDto> JoinAsync(Guid userId, Guid matchId, CancellationToken ct = default)
+        => MutateListAsync(userId, matchId, async (match, regs) =>
         {
+            var (_, profile) = await AccessHelper.RequireMemberAsync(_db, userId, match.GroupId, ct);
+            RegistrationPolicy.EnsureCanRegister(match.Status);
+
+            var existing = regs.FirstOrDefault(r => r.PlayerProfileId == profile.Id);
+            // Repetição do mesmo pedido (retry, duplo toque) devolve o estado atual sem duplicar.
+            if (existing is { Status: RegistrationStatus.Confirmed or RegistrationStatus.Waitlisted })
+                return false;
+
+            var now = DateTimeOffset.UtcNow;
+            var priority = await IsEligibleMonthlyAsync(match.GroupId, profile.Id, ct) ? PriorityClass.Monthly : PriorityClass.Casual;
+            var confirmed = regs.Count(r => r.Status == RegistrationStatus.Confirmed);
+            var waiting = regs.Count(r => r.Status == RegistrationStatus.Waitlisted);
+            var (status, position) = WaitlistLogic.Place(confirmed, match.PlayerLimit, waiting);
+
+            if (existing is null)
+            {
+                existing = new MatchRegistration
+                {
+                    Id = Guid.NewGuid(),
+                    MatchId = match.Id,
+                    PlayerProfileId = profile.Id,
+                    CreatedAt = now
+                };
+                _db.MatchRegistrations.Add(existing);
+                regs.Add(existing);
+            }
+
             existing.Status = status;
             existing.PriorityClass = priority;
             existing.WaitlistPosition = position;
-            existing.ConfirmedAt = status == RegistrationStatus.Confirmed ? DateTimeOffset.UtcNow : null;
+            existing.ConfirmedAt = status == RegistrationStatus.Confirmed ? now : null;
             existing.WithdrawnAt = null;
-            existing.UpdatedAt = DateTimeOffset.UtcNow;
-        }
-        else
-        {
-            _db.MatchRegistrations.Add(new MatchRegistration
-            {
-                Id = Guid.NewGuid(),
-                MatchId = matchId,
-                PlayerProfileId = profile.Id,
-                Status = status,
-                PriorityClass = priority,
-                WaitlistPosition = position,
-                ConfirmedAt = status == RegistrationStatus.Confirmed ? DateTimeOffset.UtcNow : null
-            });
-        }
+            existing.UpdatedAt = now;
 
-        await _db.SaveChangesAsync(ct);
+            WaitlistLogic.Rebalance(regs, match.PlayerLimit, now);
+            return true;
+        }, ct);
 
-        // Corrige corrida: se passou do limite, demove este jogador para a fila
-        if (status == RegistrationStatus.Confirmed)
+    public Task<MatchDetailDto> LeaveAsync(Guid userId, Guid matchId, CancellationToken ct = default)
+        => MutateListAsync(userId, matchId, async (match, regs) =>
         {
-            var confirmedNow = await _db.MatchRegistrations.CountAsync(
-                r => r.MatchId == matchId && r.Status == RegistrationStatus.Confirmed, ct);
-            if (confirmedNow > match.PlayerLimit)
+            var (_, profile) = await AccessHelper.RequireMemberAsync(_db, userId, match.GroupId, ct);
+            RegistrationPolicy.EnsureCanWithdraw(match.Status);
+
+            var reg = regs.FirstOrDefault(r => r.PlayerProfileId == profile.Id)
+                ?? throw new DomainException("Você não está inscrito nesta partida.");
+            if (reg.Status is not (RegistrationStatus.Confirmed or RegistrationStatus.Waitlisted))
+                throw new DomainException("Inscrição já encerrada.");
+
+            var now = DateTimeOffset.UtcNow;
+            reg.Status = RegistrationStatus.Withdrawn;
+            reg.WaitlistPosition = null;
+            reg.WithdrawnAt = now;
+            reg.UpdatedAt = now;
+            WaitlistLogic.Rebalance(regs, match.PlayerLimit, now);
+            return true;
+        }, ct);
+
+    public Task<MatchDetailDto> AdminRemoveAsync(Guid userId, Guid matchId, Guid playerProfileId, CancellationToken ct = default)
+        => MutateListAsync(userId, matchId, async (match, regs) =>
+        {
+            await AccessHelper.RequireAdminForMatchAsync(_db, userId, match, ct);
+            RegistrationPolicy.EnsureCanWithdraw(match.Status);
+
+            var reg = regs.FirstOrDefault(r => r.PlayerProfileId == playerProfileId)
+                ?? throw new DomainException("Inscrição não encontrada.");
+            if (reg.Status is not (RegistrationStatus.Confirmed or RegistrationStatus.Waitlisted))
+                throw new DomainException("Inscrição já encerrada.");
+
+            var now = DateTimeOffset.UtcNow;
+            reg.Status = RegistrationStatus.Removed;
+            reg.WaitlistPosition = null;
+            reg.UpdatedAt = now;
+            WaitlistLogic.Rebalance(regs, match.PlayerLimit, now);
+            return true;
+        }, ct);
+
+    /// <summary>
+    /// Executa uma alteração da lista numa transação e incrementa <see cref="Match.Version"/> (token de concorrência).
+    /// Duas alterações simultâneas na mesma partida: a segunda falha no SaveChanges, é desfeita e repetida
+    /// com os dados novos. Assim a última vaga não é ocupada duas vezes, em SQLite ou PostgreSQL.
+    /// </summary>
+    private async Task<MatchDetailDto> MutateListAsync(
+        Guid userId, Guid matchId, Func<Match, List<MatchRegistration>, Task<bool>> mutate, CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+            try
             {
-                var mine = await _db.MatchRegistrations
-                    .FirstAsync(r => r.MatchId == matchId && r.PlayerProfileId == profile.Id, ct);
-                var waitNow = await _db.MatchRegistrations.CountAsync(
-                    r => r.MatchId == matchId && r.Status == RegistrationStatus.Waitlisted, ct);
-                mine.Status = RegistrationStatus.Waitlisted;
-                mine.WaitlistPosition = waitNow + 1;
-                mine.ConfirmedAt = null;
-                mine.UpdatedAt = DateTimeOffset.UtcNow;
-                await _db.SaveChangesAsync(ct);
+                var match = await _db.Matches.FirstOrDefaultAsync(m => m.Id == matchId, ct)
+                    ?? throw new DomainException("Partida não encontrada.");
+                var regs = await _db.MatchRegistrations.Where(r => r.MatchId == matchId).ToListAsync(ct);
+
+                if (await mutate(match, regs))
+                {
+                    // Lista mudou depois do sorteio: a escalação precisa ser refeita ou revisada (PR-3).
+                    await DrawRosterGuard.InvalidateIfRosterChangedAsync(
+                        _db, match, regs.Where(r => r.Status == RegistrationStatus.Confirmed).Select(r => r.PlayerProfileId), ct);
+                    match.Version++;
+                    await _db.SaveChangesAsync(ct);
+                }
+
+                await tx.CommitAsync(ct);
+                break;
+            }
+            catch (DbUpdateException) when (attempt < MaxAttempts)
+            {
+                // Conflito de versão ou inscrição duplicada (índice único): recomeça com estado atualizado.
+                await tx.RollbackAsync(ct);
+                _db.ChangeTracker.Clear();
             }
         }
 
-        await tx.CommitAsync(ct);
+        _db.ChangeTracker.Clear();
         return (await _matches.GetAsync(userId, matchId, ct))!;
-    }
-
-    public async Task<MatchDetailDto> LeaveAsync(Guid userId, Guid matchId, CancellationToken ct = default)
-    {
-        await using var tx = await _db.Database.BeginTransactionAsync(ct);
-        var match = await _db.Matches.FirstOrDefaultAsync(m => m.Id == matchId, ct)
-            ?? throw new DomainException("Partida não encontrada.");
-        var (_, profile) = await AccessHelper.RequireMemberAsync(_db, userId, match.GroupId, ct);
-        RegistrationPolicy.EnsureCanWithdraw(match.Status);
-
-        var reg = await _db.MatchRegistrations
-            .FirstOrDefaultAsync(r => r.MatchId == matchId && r.PlayerProfileId == profile.Id, ct)
-            ?? throw new DomainException("Você não está inscrito nesta partida.");
-
-        if (reg.Status is not (RegistrationStatus.Confirmed or RegistrationStatus.Waitlisted))
-            throw new DomainException("Inscrição já encerrada.");
-
-        var wasConfirmed = reg.Status == RegistrationStatus.Confirmed;
-        reg.Status = RegistrationStatus.Withdrawn;
-        reg.WaitlistPosition = null;
-        reg.WithdrawnAt = DateTimeOffset.UtcNow;
-        reg.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync(ct);
-
-        if (wasConfirmed)
-            await PromoteNextAsync(match, ct);
-        else
-            await ReindexWaitlistAsync(matchId, ct);
-
-        await _db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
-        return (await _matches.GetAsync(userId, matchId, ct))!;
-    }
-
-    public async Task<MatchDetailDto> AdminRemoveAsync(Guid userId, Guid matchId, Guid playerProfileId, CancellationToken ct = default)
-    {
-        await using var tx = await _db.Database.BeginTransactionAsync(ct);
-        var match = await _db.Matches.FirstOrDefaultAsync(m => m.Id == matchId, ct)
-            ?? throw new DomainException("Partida não encontrada.");
-        await AccessHelper.RequireAdminForMatchAsync(_db, userId, match, ct);
-
-        var reg = await _db.MatchRegistrations
-            .FirstOrDefaultAsync(r => r.MatchId == matchId && r.PlayerProfileId == playerProfileId, ct)
-            ?? throw new DomainException("Inscrição não encontrada.");
-
-        var wasConfirmed = reg.Status == RegistrationStatus.Confirmed;
-        reg.Status = RegistrationStatus.Removed;
-        reg.WaitlistPosition = null;
-        reg.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync(ct);
-
-        if (wasConfirmed)
-            await PromoteNextAsync(match, ct);
-        else
-            await ReindexWaitlistAsync(matchId, ct);
-
-        await _db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
-        return (await _matches.GetAsync(userId, matchId, ct))!;
-    }
-
-    /// <summary>Promove o próximo da fila: mensalistas antes de avulsos, depois posição.</summary>
-    private async Task PromoteNextAsync(Match match, CancellationToken ct)
-    {
-        var confirmed = await _db.MatchRegistrations.CountAsync(
-            r => r.MatchId == match.Id && r.Status == RegistrationStatus.Confirmed, ct);
-        if (confirmed >= match.PlayerLimit)
-            return;
-
-        var next = await _db.MatchRegistrations
-            .Where(r => r.MatchId == match.Id && r.Status == RegistrationStatus.Waitlisted)
-            .OrderByDescending(r => r.PriorityClass) // Monthly = 1 before Casual = 0
-            .ThenBy(r => r.WaitlistPosition)
-            .ThenBy(r => r.Id)
-            .FirstOrDefaultAsync(ct);
-
-        if (next is null) return;
-
-        next.Status = RegistrationStatus.Confirmed;
-        next.WaitlistPosition = null;
-        next.ConfirmedAt = DateTimeOffset.UtcNow;
-        next.UpdatedAt = DateTimeOffset.UtcNow;
-        await ReindexWaitlistAsync(match.Id, ct);
-    }
-
-    private async Task ReindexWaitlistAsync(Guid matchId, CancellationToken ct)
-    {
-        var list = await _db.MatchRegistrations
-            .Where(r => r.MatchId == matchId && r.Status == RegistrationStatus.Waitlisted)
-            .OrderByDescending(r => r.PriorityClass)
-            .ThenBy(r => r.WaitlistPosition)
-            .ThenBy(r => r.Id)
-            .ToListAsync(ct);
-        for (var i = 0; i < list.Count; i++)
-        {
-            list[i].WaitlistPosition = i + 1;
-            list[i].UpdatedAt = DateTimeOffset.UtcNow;
-        }
     }
 
     private async Task<bool> IsEligibleMonthlyAsync(Guid groupId, Guid playerProfileId, CancellationToken ct)
@@ -204,7 +157,7 @@ public sealed class RegistrationService : IRegistrationService
         var payment = await _db.MembershipPayments.AsNoTracking()
             .FirstOrDefaultAsync(p => p.MonthlyMembershipId == membership.Id && p.BillingPeriodId == period.Id, ct);
         if (payment is null) return true;
+        // Pending segue elegível; só Overdue/Cancelled perdem prioridade.
         return payment.Status is PaymentStatus.Paid or PaymentStatus.Exempt or PaymentStatus.Pending;
-        // Pending still eligible; only Overdue/Cancelled lose priority
     }
 }

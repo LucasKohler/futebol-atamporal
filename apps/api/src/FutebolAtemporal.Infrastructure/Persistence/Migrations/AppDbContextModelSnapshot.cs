@@ -290,11 +290,21 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("CanPlayGoalkeeperSnapshot")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("GoalkeeperRatingSnapshot")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("MatchTeamId")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("PlayerProfileId")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("SkillRatingSnapshot")
                         .HasPrecision(4, 2)
@@ -493,7 +503,14 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("CanPlayGoalkeeper")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("GoalkeeperRating")
+                        .HasPrecision(4, 2)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Phone")
@@ -523,6 +540,10 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AlgorithmVersion")
+                        .HasMaxLength(40)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTimeOffset?>("ConfirmedAt")
@@ -578,10 +599,6 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Nickname")
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
@@ -596,6 +613,10 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nickname")
+                        .HasMaxLength(80)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("NormalizedEmail")

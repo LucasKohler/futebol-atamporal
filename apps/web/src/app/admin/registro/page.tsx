@@ -29,7 +29,8 @@ export default function RegistroPage() {
       const rates: Record<string, number> = {};
       m.confirmed.forEach((p) => {
         map[p.playerProfileId] = true;
-        rates[p.playerProfileId] = p.skillRating;
+        // Página só de admin: a API envia a nota de linha; 5 é o padrão histórico se faltar.
+        rates[p.playerProfileId] = p.skillRating ?? 5;
       });
       setPresence(map);
       setRatings(rates);

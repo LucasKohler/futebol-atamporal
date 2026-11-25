@@ -16,6 +16,7 @@ public interface IGroupQueryService
     Task<GroupDto?> GetByIdAsync(Guid groupId, Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<GroupPlayerDto>> ListPlayersAsync(Guid userId, Guid groupId, CancellationToken ct = default);
     Task<GroupPlayerDto> SetNicknameAsync(Guid userId, Guid groupId, Guid playerProfileId, string? nickname, CancellationToken ct = default);
+    Task<GroupPlayerDto> SetRatingsAsync(Guid userId, Guid groupId, Guid playerProfileId, SetRatingsRequest request, CancellationToken ct = default);
 }
 
 public sealed record GroupDto(

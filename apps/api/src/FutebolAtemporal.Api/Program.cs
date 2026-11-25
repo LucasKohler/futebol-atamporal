@@ -1,7 +1,9 @@
 using FutebolAtemporal.Domain.Exceptions;
 using FutebolAtemporal.Infrastructure;
 using FutebolAtemporal.Infrastructure.Persistence;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,7 +14,9 @@ builder.Host.UseSerilog((ctx, cfg) =>
         .WriteTo.Console());
 
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddControllers();
+// A web envia e recebe estados como texto ("RegistrationClosed", "Inactive", "Paid"); números seguem aceitos.
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddProblemDetails();
@@ -67,6 +71,7 @@ file sealed class AppExceptionHandler : IExceptionHandler
         {
             ForbiddenException => (StatusCodes.Status403Forbidden, "Sem permissão"),
             DomainException => (StatusCodes.Status400BadRequest, "Regra de negócio"),
+            DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "Conflito de atualização"),
             _ => (0, null)
         };
 
@@ -80,7 +85,10 @@ file sealed class AppExceptionHandler : IExceptionHandler
             ProblemDetails =
             {
                 Title = title,
-                Detail = exception.Message,
+                // Não expõe a mensagem interna do EF em conflitos de concorrência.
+                Detail = exception is DbUpdateConcurrencyException
+                    ? "Os dados mudaram ao mesmo tempo. Atualize e tente de novo."
+                    : exception.Message,
                 Status = status
             }
         });

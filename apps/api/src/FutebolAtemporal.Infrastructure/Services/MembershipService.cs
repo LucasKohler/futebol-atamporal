@@ -54,18 +54,21 @@ public sealed class MembershipService : IMembershipService
             _db.MonthlyMemberships.Add(existing);
         }
 
+        await EnsureOpenPeriodChargeAsync(existing, userId, ct);
         await _db.SaveChangesAsync(ct);
         var name = (await AccessHelper.DisplayNamesForProfilesAsync(_db, [playerProfileId], ct))[playerProfileId];
         return new MonthlyMemberDto(existing.Id, playerProfileId, name, existing.Status.ToString(), existing.StartedAt);
     }
 
-    public async Task<MonthlyMemberDto> SetStatusAsync(Guid userId, Guid membershipId, MonthlyMembershipStatus status, CancellationToken ct = default)
+    public async Task<MonthlyMemberDto> SetStatusAsync(Guid userId, Guid groupId, Guid membershipId, MonthlyMembershipStatus status, CancellationToken ct = default)
     {
-        var membership = await _db.MonthlyMemberships.FirstOrDefaultAsync(m => m.Id == membershipId, ct)
-            ?? throw new DomainException("Mensalista não encontrado.");
-        await AccessHelper.RequireMemberAsync(_db, userId, membership.GroupId, ct, adminOnly: true);
+        var membership = await RequireMembershipInGroupAsync(userId, groupId, membershipId, ct);
+        if (!Enum.IsDefined(status))
+            throw new DomainException("Situação do mensalista inválida. Use Active, Inactive ou Suspended.");
         membership.Status = status;
         membership.EndedAt = status == MonthlyMembershipStatus.Active ? null : DateTimeOffset.UtcNow;
+        if (status == MonthlyMembershipStatus.Active)
+            await EnsureOpenPeriodChargeAsync(membership, userId, ct);
         await _db.SaveChangesAsync(ct);
         var name = (await AccessHelper.DisplayNamesForProfilesAsync(_db, [membership.PlayerProfileId], ct))[membership.PlayerProfileId];
         return new MonthlyMemberDto(membership.Id, membership.PlayerProfileId, name, membership.Status.ToString(), membership.StartedAt);
@@ -133,13 +136,15 @@ public sealed class MembershipService : IMembershipService
             r.per.Id, r.per.Label, r.pay.Amount, r.pay.Status.ToString(), r.pay.PaidAt, r.pay.Notes)).ToList();
     }
 
-    public async Task<PaymentDto> UpsertPaymentAsync(Guid userId, Guid membershipId, Guid periodId, UpsertPaymentRequest request, CancellationToken ct = default)
+    public async Task<PaymentDto> UpsertPaymentAsync(Guid userId, Guid groupId, Guid membershipId, Guid periodId, UpsertPaymentRequest request, CancellationToken ct = default)
     {
-        var membership = await _db.MonthlyMemberships.FirstOrDefaultAsync(m => m.Id == membershipId, ct)
-            ?? throw new DomainException("Mensalista não encontrado.");
-        await AccessHelper.RequireMemberAsync(_db, userId, membership.GroupId, ct, adminOnly: true);
+        var membership = await RequireMembershipInGroupAsync(userId, groupId, membershipId, ct);
         var period = await _db.MembershipBillingPeriods.FirstOrDefaultAsync(p => p.Id == periodId && p.GroupId == membership.GroupId, ct)
             ?? throw new DomainException("Competência não encontrada.");
+        if (!Enum.IsDefined(request.Status))
+            throw new DomainException("Situação do pagamento inválida. Use Pending, Paid, Overdue, Exempt ou Cancelled.");
+        if (request.Amount < 0)
+            throw new DomainException("O valor da mensalidade não pode ser negativo.");
 
         var pay = await _db.MembershipPayments
             .FirstOrDefaultAsync(p => p.MonthlyMembershipId == membershipId && p.BillingPeriodId == periodId, ct);
@@ -166,5 +171,53 @@ public sealed class MembershipService : IMembershipService
 
         var name = (await AccessHelper.DisplayNamesForProfilesAsync(_db, [membership.PlayerProfileId], ct))[membership.PlayerProfileId];
         return new PaymentDto(pay.Id, membershipId, name, periodId, period.Label, pay.Amount, pay.Status.ToString(), pay.PaidAt, pay.Notes);
+    }
+
+    /// <summary>Admin do grupo da rota e mensalista pertencente a esse mesmo grupo.</summary>
+    private async Task<MonthlyMembership> RequireMembershipInGroupAsync(Guid userId, Guid groupId, Guid membershipId, CancellationToken ct)
+    {
+        await AccessHelper.RequireMemberAsync(_db, userId, groupId, ct, adminOnly: true);
+        return await _db.MonthlyMemberships.FirstOrDefaultAsync(m => m.Id == membershipId && m.GroupId == groupId, ct)
+            ?? throw new DomainException("Mensalista não encontrado neste grupo.");
+    }
+
+    /// <summary>
+    /// Mensalista incluído ou reativado depois que a competência do mês corrente já foi aberta
+    /// recebe o lançamento pendente desse mês. Idempotente: não duplica nem altera lançamento existente.
+    /// </summary>
+    private async Task EnsureOpenPeriodChargeAsync(MonthlyMembership membership, Guid userId, CancellationToken ct)
+    {
+        var group = await _db.FootballGroups.AsNoTracking().FirstAsync(g => g.Id == membership.GroupId, ct);
+        var today = LocalNow(group.TimeZoneId);
+        var period = await _db.MembershipBillingPeriods.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.GroupId == membership.GroupId && p.Year == today.Year && p.Month == today.Month, ct);
+        if (period is null) return; // competência ainda não aberta: EnsurePeriodAsync lançará para todos os ativos
+
+        var exists = await _db.MembershipPayments.AnyAsync(
+            p => p.MonthlyMembershipId == membership.Id && p.BillingPeriodId == period.Id, ct)
+            || _db.MembershipPayments.Local.Any(p => p.MonthlyMembershipId == membership.Id && p.BillingPeriodId == period.Id);
+        if (exists) return;
+
+        _db.MembershipPayments.Add(new MembershipPayment
+        {
+            Id = Guid.NewGuid(),
+            MonthlyMembershipId = membership.Id,
+            BillingPeriodId = period.Id,
+            Amount = GroupSettings.Parse(group.SettingsJson).DefaultMonthlyFee,
+            Status = PaymentStatus.Pending,
+            RecordedByUserId = userId
+        });
+    }
+
+    private static DateTime LocalNow(string timeZoneId)
+    {
+        try
+        {
+            return TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(timeZoneId)).DateTime;
+        }
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            return DateTime.UtcNow;
+        }
     }
 }

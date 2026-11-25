@@ -27,6 +27,11 @@ export type GroupPlayer = {
   displayName: string;
   phone: string;
   isMonthlyMember: boolean;
+  /** Nota de linha, 0 a 10. */
+  lineRating: number;
+  canPlayGoalkeeper: boolean;
+  /** Nota de goleiro, 0 a 10; null = sem nota. */
+  goalkeeperRating: number | null;
 };
 
 export type Group = {
@@ -58,7 +63,8 @@ export type RegistrationPlayer = {
   status: string;
   priorityClass: string;
   waitlistPosition?: number | null;
-  skillRating: number;
+  /** Só vem para administradores; jogadores recebem null. */
+  skillRating: number | null;
 };
 
 export type MatchDetail = {
@@ -91,22 +97,55 @@ export type Payment = {
 
 export type BillingPeriod = { id: string; year: number; month: number; label: string };
 
+/** Notas só chegam para administradores; para jogadores são null. */
+export type DrawMember = {
+  playerProfileId: string;
+  displayName: string;
+  /** "Goalkeeper" | "Line" */
+  role: string;
+  skillRating: number | null;
+  goalkeeperRating: number | null;
+};
+
 export type DrawTeam = {
   id: string;
   name: string;
+  /** "Vermelho" | "Preto" | "Verde"; null em sorteios antigos (Time A/B). */
+  color: string | null;
   sortOrder: number;
-  totalSkill: number;
-  members: { playerProfileId: string; displayName: string; skillRating: number }[];
+  lineCount: number;
+  lineSum: number | null;
+  lineAverage: number | null;
+  goalkeeperName: string | null;
+  goalkeeperRating: number | null;
+  members: DrawMember[];
+  totalSkill: number | null;
 };
 
 export type Draw = {
   id: string;
   matchId: string;
   seed: string;
+  /** "Draft" | "Confirmed" */
   status: string;
   teamCount: number;
-  strengthDelta: number;
+  algorithmVersion: string | null;
+  isLegacy: boolean;
   createdAt: string;
+  confirmedAt: string | null;
+  strengthDelta: number | null;
+  lineAverageSpread: number | null;
+  lineSumSpread: number | null;
+  lineCountSpread: number;
+  totalCountSpread: number;
+  goalkeepersAssigned: number;
+  goalkeeperSpread: number | null;
+  warnings: string[];
+  blockers: string[];
+  rosterChanged: boolean;
+  rosterChanges: string[];
+  canConfirm: boolean;
+  isLocked: boolean;
   teams: DrawTeam[];
 };
 
@@ -122,14 +161,32 @@ export type RankingRow = {
   winRate: number;
 };
 
+/**
+ * Mensagem legível de um erro da API: regra de negócio (detail), erro de campo
+ * (ValidationProblemDetails.errors) ou título genérico.
+ */
+export function problemMessage(body: unknown, fallback: string): string {
+  if (!body || typeof body !== "object") return fallback;
+  const problem = body as { detail?: unknown; title?: unknown; errors?: unknown };
+  if (typeof problem.detail === "string" && problem.detail) return problem.detail;
+  if (problem.errors && typeof problem.errors === "object") {
+    const fields = Object.entries(problem.errors as Record<string, unknown>)
+      .filter(([, msgs]) => Array.isArray(msgs) && msgs.length > 0)
+      .map(([field]) => field.replace(/^\$\.?/, "") || "corpo da requisição");
+    if (fields.length > 0) return `Valor inválido em: ${fields.join(", ")}.`;
+  }
+  if (typeof problem.title === "string" && problem.title) return problem.title;
+  return fallback;
+}
+
 async function parseJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    let detail = res.statusText;
+    let detail = res.statusText || `Erro ${res.status}`;
+    if (res.status === 409) detail = "A lista mudou ao mesmo tempo. Atualize e tente de novo.";
     try {
-      const body = await res.json();
-      detail = body.detail ?? body.title ?? detail;
+      detail = problemMessage(await res.json(), detail);
     } catch {
-      /* ignore */
+      /* corpo vazio ou não JSON */
     }
     throw new Error(detail);
   }
@@ -243,6 +300,18 @@ export const api = {
       body: JSON.stringify({ nickname }),
     }).then((r) => parseJson<GroupPlayer>(r));
   },
+  setRatings(
+    groupId: string,
+    playerProfileId: string,
+    body: { lineRating: number; canPlayGoalkeeper: boolean; goalkeeperRating: number | null },
+  ) {
+    return fetch(url(`/api/groups/${groupId}/players/${playerProfileId}/ratings`), {
+      method: "PUT",
+      headers: jsonHeaders,
+      credentials: "include",
+      body: JSON.stringify(body),
+    }).then((r) => parseJson<GroupPlayer>(r));
+  },
   listMembers(groupId: string) {
     return fetch(url(`/api/groups/${groupId}/memberships`), { credentials: "include" }).then((r) =>
       parseJson<MonthlyMember[]>(r),
@@ -308,6 +377,14 @@ export const api = {
       credentials: "include",
     }).then((r) => parseJson<Draw>(r));
   },
+  swapPlayers(matchId: string, drawId: string, playerA: string, playerB: string) {
+    return fetch(url(`/api/matches/${matchId}/draw/${drawId}/swap`), {
+      method: "POST",
+      headers: jsonHeaders,
+      credentials: "include",
+      body: JSON.stringify({ playerA, playerB }),
+    }).then((r) => parseJson<Draw>(r));
+  },
   closeMatch(
     matchId: string,
     body: {
@@ -337,7 +414,8 @@ export const api = {
       parseJson<{
         playerProfileId: string;
         displayName: string;
-        skillRating: number;
+        /** Só para administradores; null para jogadores. */
+        skillRating: number | null;
         history: {
           matchId: string;
           title?: string;

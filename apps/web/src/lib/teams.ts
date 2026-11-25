@@ -1,0 +1,70 @@
+import type { Draw, DrawMember, DrawTeam } from "./api";
+import { playerDisplayName } from "./playerDisplayName";
+
+export type TeamStyle = {
+  /** Rótulo sempre em texto: a cor nunca é a única pista. */
+  label: string;
+  emoji: string;
+  /** Classes literais para o Tailwind detectar. */
+  swatch: string;
+  border: string;
+};
+
+const STYLES: Record<string, TeamStyle> = {
+  Vermelho: { label: "Vermelho", emoji: "🔴", swatch: "bg-red-600", border: "border-red-600" },
+  Preto: { label: "Preto", emoji: "⚫", swatch: "bg-neutral-900", border: "border-neutral-900" },
+  Verde: { label: "Verde", emoji: "🟢", swatch: "bg-green-600", border: "border-green-600" },
+};
+
+/** Estilo do time; sorteios antigos (Time A/B, sem cor) usam estilo neutro com o nome original. */
+export function teamStyle(team: Pick<DrawTeam, "color" | "name">): TeamStyle {
+  return (team.color && STYLES[team.color]) || { label: team.name, emoji: "⚪", swatch: "bg-outline", border: "border-outline" };
+}
+
+/** Espelha RegistrationPolicy.IsLineupFrozen da API: partida iniciada ou aguardando fechamento. */
+export function isLineupFrozen(matchStatus: string): boolean {
+  return matchStatus === "InProgress" || matchStatus === "AwaitingClose";
+}
+
+export function isGoalkeeper(member: Pick<DrawMember, "role">) {
+  return member.role === "Goalkeeper";
+}
+
+/** Goleiro primeiro, depois linha. */
+export function orderedMembers(team: DrawTeam): DrawMember[] {
+  return [...team.members].sort((a, b) => Number(isGoalkeeper(b)) - Number(isGoalkeeper(a)));
+}
+
+export function formatScore(value: number | null | undefined, digits = 1): string {
+  return value === null || value === undefined ? "—" : value.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: 2 });
+}
+
+/**
+ * Escalação para colar no WhatsApp (só sorteio confirmado).
+ * Nomes e funções apenas: sem notas, somas ou avisos.
+ */
+export function buildTeamsSummary(draw: Draw): string | null {
+  if (draw.status !== "Confirmed" || draw.rosterChanged) return null;
+  const lines = ["", "🎽 Times"];
+  for (const team of [...draw.teams].sort((a, b) => a.sortOrder - b.sortOrder)) {
+    const style = teamStyle(team);
+    const members = orderedMembers(team).map((m) => `${playerDisplayName(m.displayName)}${isGoalkeeper(m) ? " (gol)" : ""}`);
+    const keeperNote = team.members.some(isGoalkeeper) || draw.isLegacy ? "" : " · gol em rodízio";
+    lines.push(`${style.emoji} ${style.label}: ${members.join(", ")}${keeperNote}`);
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Seleção de troca em dois toques: o primeiro escolhe, o segundo (de outro time ou outra função) troca.
+ * Retorna o novo estado e, quando houver, o par a trocar.
+ */
+export function nextSwapSelection(
+  selected: { playerProfileId: string; teamId: string; role: string } | null,
+  clicked: { playerProfileId: string; teamId: string; role: string },
+): { selected: typeof selected; swap: [string, string] | null } {
+  if (!selected) return { selected: clicked, swap: null };
+  if (selected.playerProfileId === clicked.playerProfileId) return { selected: null, swap: null };
+  if (selected.teamId === clicked.teamId && selected.role === clicked.role) return { selected: clicked, swap: null };
+  return { selected: null, swap: [selected.playerProfileId, clicked.playerProfileId] };
+}

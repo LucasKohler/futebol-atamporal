@@ -30,7 +30,10 @@ export default function PerfilPage() {
       {user?.nickname ? (
         <p className="text-label-md text-on-surface-variant">Nome cadastrado: {user.registeredName}</p>
       ) : null}
-      <p className="mt-2 text-label-md">Nível técnico: {history?.skillRating?.toFixed(1) ?? "—"}</p>
+      {/* A API só envia a nota para administradores. */}
+      {history?.skillRating != null ? (
+        <p className="mt-2 text-label-md">Nota de linha: {history.skillRating.toFixed(1)}</p>
+      ) : null}
 
       <div className="mt-lg grid grid-cols-2 gap-md">
         <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-md">

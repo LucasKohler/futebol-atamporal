@@ -196,7 +196,8 @@ public sealed class StatsService : IStatsService
         {
             playerProfileId,
             displayName = name,
-            skillRating = profile.SkillRating,
+            // Nota é dado administrativo: só o admin do grupo recebe (nem o próprio jogador).
+            skillRating = membership.Role == GroupRole.Admin ? profile.SkillRating : (decimal?)null,
             history = matches.OrderByDescending(m => m.StartsAt).Select(m =>
             {
                 var reg = regs.First(r => r.MatchId == m.Id);

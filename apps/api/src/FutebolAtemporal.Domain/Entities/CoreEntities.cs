@@ -32,7 +32,12 @@ public class PlayerProfile
     public Guid UserId { get; set; }
     public string? Phone { get; set; }
     public string? PhotoUrl { get; set; }
+    /// <summary>Nota de linha (0–10). Mantém o nome histórico da coluna.</summary>
     public decimal SkillRating { get; set; } = 5.0m;
+    /// <summary>Aptidão para jogar no gol; independente da nota de linha.</summary>
+    public bool CanPlayGoalkeeper { get; set; }
+    /// <summary>Nota de goleiro (0–10). Nulo = sem nota; zero é uma nota válida.</summary>
+    public decimal? GoalkeeperRating { get; set; }
     public string? Bio { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
@@ -117,6 +122,8 @@ public class TeamDraw
     public string Seed { get; set; } = string.Empty;
     public TeamDrawStatus Status { get; set; } = TeamDrawStatus.Draft;
     public int TeamCount { get; set; } = 2;
+    /// <summary>Versão do algoritmo (ex.: "3cores-v1"). Nulo = sorteio antigo A/B.</summary>
+    public string? AlgorithmVersion { get; set; }
     public Guid CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ConfirmedAt { get; set; }
@@ -140,7 +147,12 @@ public class MatchTeamMember
     public MatchTeam MatchTeam { get; set; } = null!;
     public Guid PlayerProfileId { get; set; }
     public PlayerProfile PlayerProfile { get; set; } = null!;
+    /// <summary>Nota de linha no momento do sorteio.</summary>
     public decimal SkillRatingSnapshot { get; set; }
+    /// <summary>Função na escalação. Sorteios antigos ficam como Line.</summary>
+    public TeamRole Role { get; set; } = TeamRole.Line;
+    public bool CanPlayGoalkeeperSnapshot { get; set; }
+    public decimal? GoalkeeperRatingSnapshot { get; set; }
 }
 
 public class MatchResult

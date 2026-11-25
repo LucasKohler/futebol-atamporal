@@ -97,7 +97,7 @@ public sealed class MembershipsController : ControllerBase
 
     [HttpPost("{membershipId:guid}/status")]
     public async Task<ActionResult> Status(Guid groupId, Guid membershipId, [FromBody] StatusRequest body, CancellationToken ct)
-        => Ok(await _svc.SetStatusAsync(User.GetUserId(), membershipId, body.Status, ct));
+        => Ok(await _svc.SetStatusAsync(User.GetUserId(), groupId, membershipId, body.Status, ct));
 
     [HttpPost("periods")]
     public async Task<ActionResult> EnsurePeriod(Guid groupId, [FromBody] PeriodRequest body, CancellationToken ct)
@@ -109,7 +109,7 @@ public sealed class MembershipsController : ControllerBase
 
     [HttpPut("{membershipId:guid}/payments/{periodId:guid}")]
     public async Task<ActionResult> UpsertPayment(Guid groupId, Guid membershipId, Guid periodId, [FromBody] UpsertPaymentRequest body, CancellationToken ct)
-        => Ok(await _svc.UpsertPaymentAsync(User.GetUserId(), membershipId, periodId, body, ct));
+        => Ok(await _svc.UpsertPaymentAsync(User.GetUserId(), groupId, membershipId, periodId, body, ct));
 }
 
 public sealed record AddMemberRequest(Guid PlayerProfileId);
@@ -137,14 +137,11 @@ public sealed class DrawController : ControllerBase
 
     [HttpPost("{drawId:guid}/confirm")]
     public async Task<ActionResult> Confirm(Guid matchId, Guid drawId, CancellationToken ct)
-        => Ok(await _draws.ConfirmDrawAsync(User.GetUserId(), drawId, ct));
+        => Ok(await _draws.ConfirmDrawAsync(User.GetUserId(), matchId, drawId, ct));
 
     [HttpPost("{drawId:guid}/swap")]
     public async Task<ActionResult> Swap(Guid matchId, Guid drawId, [FromBody] SwapRequest body, CancellationToken ct)
-    {
-        await _draws.SwapPlayersAsync(User.GetUserId(), drawId, body.PlayerA, body.PlayerB, ct);
-        return Ok(await _draws.GetCurrentAsync(User.GetUserId(), matchId, ct));
-    }
+        => Ok(await _draws.SwapPlayersAsync(User.GetUserId(), matchId, drawId, body.PlayerA, body.PlayerB, ct));
 }
 
 public sealed record CreateDrawRequest(string? Seed);

@@ -4,7 +4,104 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { api, GroupPlayer, MonthlyMember, Payment } from "@/lib/api";
 import { playerDisplayName } from "@/lib/playerDisplayName";
+import { formatRating, RatingsPayload, validateRatings } from "@/lib/ratings";
 import { useSession } from "@/lib/useSession";
+
+/** Notas separadas de linha e goleiro (0 a 10). Goleiro vazio = sem nota, diferente de zero. */
+function RatingsEditor({
+  player,
+  save,
+  onSaved,
+}: {
+  player: GroupPlayer;
+  save: (body: RatingsPayload) => Promise<GroupPlayer>;
+  onSaved: (updated: GroupPlayer) => void;
+}) {
+  const id = player.playerProfileId;
+  const [line, setLine] = useState(String(player.lineRating));
+  const [canGk, setCanGk] = useState(player.canPlayGoalkeeper);
+  const [gk, setGk] = useState(player.goalkeeperRating === null ? "" : String(player.goalkeeperRating));
+  const [status, setStatus] = useState<{ error: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Ressincroniza o formulário quando a lista é recarregada do servidor com valores diferentes,
+  // sem remontar o componente (preserva a mensagem de confirmação).
+  useEffect(() => {
+    setLine(String(player.lineRating));
+    setCanGk(player.canPlayGoalkeeper);
+    setGk(player.goalkeeperRating === null ? "" : String(player.goalkeeperRating));
+  }, [player.lineRating, player.canPlayGoalkeeper, player.goalkeeperRating]);
+
+  return (
+    <form
+      className="mt-2 flex flex-wrap items-end gap-2"
+      aria-label={`Notas de ${player.registeredName}`}
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const result = validateRatings({ lineRating: line, canPlayGoalkeeper: canGk, goalkeeperRating: gk });
+        if (!result.ok) {
+          setStatus({ error: true, text: result.error });
+          return;
+        }
+        setBusy(true);
+        try {
+          const updated = await save(result.value);
+          onSaved(updated);
+          setStatus({
+            error: false,
+            text: `Notas salvas: linha ${formatRating(updated.lineRating)}, goleiro ${formatRating(updated.goalkeeperRating)}.`,
+          });
+        } catch (err) {
+          setStatus({ error: true, text: err instanceof Error ? err.message : "Erro ao salvar notas" });
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <label className="text-label-md" htmlFor={`linha-${id}`}>
+        Nota de linha
+        <input
+          id={`linha-${id}`}
+          inputMode="decimal"
+          className="mt-1 block w-20 rounded-lg border border-outline-variant px-2 py-1 text-body-md"
+          value={line}
+          onChange={(e) => setLine(e.target.value)}
+        />
+      </label>
+      <label className="flex min-h-11 items-center gap-1 text-label-md">
+        <input
+          type="checkbox"
+          checked={canGk}
+          onChange={(e) => {
+            setCanGk(e.target.checked);
+            if (!e.target.checked) setGk("");
+          }}
+        />
+        Apto para o gol
+      </label>
+      <label className="text-label-md" htmlFor={`gol-${id}`}>
+        Nota de goleiro
+        <input
+          id={`gol-${id}`}
+          inputMode="decimal"
+          placeholder="sem nota"
+          disabled={!canGk}
+          className="mt-1 block w-20 rounded-lg border border-outline-variant px-2 py-1 text-body-md disabled:opacity-50"
+          value={gk}
+          onChange={(e) => setGk(e.target.value)}
+        />
+      </label>
+      <button type="submit" disabled={busy} className="min-h-11 text-label-md underline disabled:opacity-50">
+        Salvar notas
+      </button>
+      {status ? (
+        <p role={status.error ? "alert" : "status"} className={`w-full text-label-md ${status.error ? "text-error" : "text-on-surface-variant"}`}>
+          {status.text}
+        </p>
+      ) : null}
+    </form>
+  );
+}
 
 export default function MensalistasPage() {
   const { group, loading, isAdmin } = useSession();
@@ -41,7 +138,7 @@ export default function MensalistasPage() {
   return (
     <AppShell>
       <h1 className="text-headline-lg">Mensalistas</h1>
-      <p className="mt-1 text-body-md text-on-surface-variant">Jogadores, apelidos e pagamentos do mês</p>
+      <p className="mt-1 text-body-md text-on-surface-variant">Jogadores, apelidos, notas de linha e goleiro e pagamentos do mês</p>
       {msg ? <p className="mt-md text-error">{msg}</p> : null}
 
       <section className="mt-lg">
@@ -94,6 +191,14 @@ export default function MensalistasPage() {
                   </button>
                 ) : null}
               </div>
+              <RatingsEditor
+                key={p.playerProfileId}
+                player={p}
+                onSaved={(updated) =>
+                  setPlayers((list) => list.map((row) => (row.playerProfileId === updated.playerProfileId ? updated : row)))
+                }
+                save={(body) => api.setRatings(group!.id, p.playerProfileId, body)}
+              />
             </div>
           ))}
           {players.length === 0 ? <p className="p-md text-on-surface-variant">Nenhum jogador.</p> : null}

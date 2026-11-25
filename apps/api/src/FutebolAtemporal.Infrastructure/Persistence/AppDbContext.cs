@@ -54,6 +54,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.UserId).IsUnique();
             e.Property(x => x.SkillRating).HasPrecision(4, 2);
+            e.Property(x => x.GoalkeeperRating).HasPrecision(4, 2);
             e.Property(x => x.Phone).HasMaxLength(40);
             e.Property(x => x.PhotoUrl).HasMaxLength(500);
             e.Property(x => x.Bio).HasMaxLength(1000);
@@ -116,6 +117,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasIndex(x => x.MatchId);
             e.Property(x => x.Seed).HasMaxLength(80).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.AlgorithmVersion).HasMaxLength(40);
             e.HasOne(x => x.Match).WithMany().HasForeignKey(x => x.MatchId);
         });
 
@@ -131,6 +133,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.MatchTeamId, x.PlayerProfileId }).IsUnique();
             e.Property(x => x.SkillRatingSnapshot).HasPrecision(4, 2);
+            e.Property(x => x.GoalkeeperRatingSnapshot).HasPrecision(4, 2);
             e.HasOne(x => x.MatchTeam).WithMany(t => t.Members).HasForeignKey(x => x.MatchTeamId);
             e.HasOne(x => x.PlayerProfile).WithMany().HasForeignKey(x => x.PlayerProfileId);
         });
