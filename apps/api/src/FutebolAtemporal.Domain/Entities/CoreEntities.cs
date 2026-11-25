@@ -168,6 +168,25 @@ public class MatchResult
     public Guid ClosedByUserId { get; set; }
 }
 
+/// <summary>
+/// Revisão da súmula de uma rodada de três cores (PO-1/PO-2). Cada correção cria uma nova revisão
+/// com motivo; só a revisão vigente (IsCurrent) entra em vitórias, artilharia e prêmios.
+/// A súmula (confrontos, gols, presença e prêmios) fica em JSON para gravar a revisão inteira de forma atômica.
+/// </summary>
+public class MatchResultRevision
+{
+    public Guid Id { get; set; }
+    public Guid MatchId { get; set; }
+    public Match Match { get; set; } = null!;
+    public int Revision { get; set; }
+    public bool IsCurrent { get; set; }
+    public string SheetJson { get; set; } = "{}";
+    /// <summary>Obrigatório a partir da revisão 2 (correção).</summary>
+    public string? Reason { get; set; }
+    public Guid CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public class PlayerMatchRating
 {
     public Guid Id { get; set; }

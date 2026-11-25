@@ -23,6 +23,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<MatchTeamMember> MatchTeamMembers => Set<MatchTeamMember>();
     public DbSet<MatchResult> MatchResults => Set<MatchResult>();
     public DbSet<PlayerMatchRating> PlayerMatchRatings => Set<PlayerMatchRating>();
+    public DbSet<MatchResultRevision> MatchResultRevisions => Set<MatchResultRevision>();
     public DbSet<PlayerAward> PlayerAwards => Set<PlayerAward>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
@@ -143,6 +144,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.MatchId).IsUnique();
             e.Property(x => x.Notes).HasMaxLength(2000);
+            e.HasOne(x => x.Match).WithMany().HasForeignKey(x => x.MatchId);
+        });
+
+        builder.Entity<MatchResultRevision>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.MatchId, x.Revision }).IsUnique();
+            e.HasIndex(x => new { x.MatchId, x.IsCurrent });
+            e.Property(x => x.SheetJson).IsRequired();
+            e.Property(x => x.Reason).HasMaxLength(500);
             e.HasOne(x => x.Match).WithMany().HasForeignKey(x => x.MatchId);
         });
 

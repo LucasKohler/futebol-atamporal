@@ -40,7 +40,8 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto max-w-container px-page-mobile pb-28 pt-lg md:px-page-desktop md:pb-xl">
+      {/* A navegação inferior é fixa em todas as larguras: a folga evita que ela cubra o último botão da página. */}
+      <main className="mx-auto max-w-container px-page-mobile pb-28 pt-lg md:px-page-desktop">
         {children}
       </main>
 

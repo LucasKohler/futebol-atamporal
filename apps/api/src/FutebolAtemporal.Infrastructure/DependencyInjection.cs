@@ -75,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Draws.IDrawService, DrawService>();
         services.AddScoped<Application.Results.IResultService, ResultService>();
         services.AddScoped<Application.Results.IStatsService, StatsService>();
+        services.AddScoped<Application.Results.IRoundResultService, RoundResultService>();
 
         return services;
     }

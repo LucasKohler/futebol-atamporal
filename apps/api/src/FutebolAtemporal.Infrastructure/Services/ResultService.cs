@@ -28,6 +28,9 @@ public sealed class ResultService : IResultService
 
         if (await _db.MatchResults.AnyAsync(r => r.MatchId == matchId, ct))
             throw new DomainException("Resultado já registrado.");
+        // Fechamento antigo (placar A/B) só para sorteios antigos; três cores usam a súmula (POST /result/round).
+        if (await _db.TeamDraws.AnyAsync(d => d.MatchId == matchId && d.Status == TeamDrawStatus.Confirmed && d.AlgorithmVersion != null, ct))
+            throw new DomainException("Rodada de três cores: registre os confrontos, gols e prêmios pela súmula da rodada.");
 
         foreach (var p in request.Presence)
         {
@@ -91,7 +94,8 @@ public sealed class ResultService : IResultService
         await AccessHelper.RequireMemberAsync(_db, userId, match.GroupId, ct);
         var result = await _db.MatchResults.AsNoTracking().FirstOrDefaultAsync(r => r.MatchId == matchId, ct);
         if (result is null) return null;
-        var award = await _db.PlayerAwards.AsNoTracking().FirstOrDefaultAsync(a => a.MatchId == matchId, ct);
+        var award = await _db.PlayerAwards.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.MatchId == matchId && a.Type == AwardType.ManOfTheMatch, ct);
         return new MatchResultDto(matchId, result.HomeScore, result.AwayScore, result.WinnerTeamId,
             award?.PlayerProfileId, result.Notes, result.ClosedAt);
     }
@@ -131,7 +135,7 @@ public sealed class StatsService : IStatsService
             .Where(r => completedMatchIds.Contains(r.MatchId))
             .ToListAsync(ct);
         var awards = await _db.PlayerAwards.AsNoTracking()
-            .Where(a => completedMatchIds.Contains(a.MatchId))
+            .Where(a => completedMatchIds.Contains(a.MatchId) && a.Type == AwardType.ManOfTheMatch)
             .ToListAsync(ct);
 
         var profileIds = regs.Select(r => r.PlayerProfileId).Distinct().ToList();

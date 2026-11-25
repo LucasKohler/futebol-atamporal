@@ -3,21 +3,32 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
-import { api } from "@/lib/api";
+import { api, SeasonStats } from "@/lib/api";
 import { playerDisplayName } from "@/lib/playerDisplayName";
+import { groupPeriod, monthName, myStats } from "@/lib/season";
 import { useSession } from "@/lib/useSession";
 
 type History = Awaited<ReturnType<typeof api.playerHistory>>;
 
 export default function PerfilPage() {
   const router = useRouter();
-  const { user, loading, refresh } = useSession();
+  const { user, group, loading, refresh } = useSession();
   const [history, setHistory] = useState<History | null>(null);
+  const [season, setSeason] = useState<SeasonStats | null>(null);
 
   useEffect(() => {
     if (!user?.playerProfileId) return;
     api.playerHistory(user.playerProfileId).then(setHistory).catch(console.error);
   }, [user]);
+
+  useEffect(() => {
+    if (!group) return;
+    // Mês/ano no fuso do grupo (mesma regra da API), não no fuso do aparelho.
+    const { year, month } = groupPeriod(new Date(), group.timeZoneId);
+    api.season(group.id, year, month).then(setSeason).catch(console.error);
+  }, [group]);
+
+  const mine = myStats(season, user?.playerProfileId);
 
   if (loading) return <div className="flex min-h-dvh items-center justify-center">Carregando…</div>;
 
@@ -45,6 +56,23 @@ export default function PerfilPage() {
           <p className="mt-1 text-headline-lg text-primary">{history?.history[0]?.rating?.toFixed(1) ?? "—"}</p>
         </div>
       </div>
+
+      {mine && season ? (
+        <section aria-labelledby="temporada-titulo" className="mt-lg">
+          <h2 id="temporada-titulo" className="text-headline-md">
+            Gols e prêmios
+          </h2>
+          <p className="text-label-md text-on-surface-variant">
+            {monthName(season.month ?? 1)} de {season.year}, no fuso do grupo ({season.timeZoneId}). Outros meses em Rankings.
+          </p>
+          <dl className="mt-sm grid grid-cols-2 gap-md sm:grid-cols-4">
+            <Stat label={`Gols em ${monthName(season.month ?? 1)}`} value={mine.monthGoals} />
+            <Stat label={`Gols em ${season.year}`} value={mine.yearGoals} />
+            <Stat label="Melhor Jogador (mês)" value={mine.bestPlayer} />
+            <Stat label="Melhor Goleiro (mês)" value={mine.bestGoalkeeper} />
+          </dl>
+        </section>
+      ) : null}
 
       <section className="mt-xl">
         <h2 className="text-headline-md">Histórico</h2>
@@ -74,5 +102,14 @@ export default function PerfilPage() {
         Sair
       </button>
     </AppShell>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-md">
+      <dt className="text-label-sm uppercase text-on-surface-variant">{label}</dt>
+      <dd className="mt-1 text-headline-lg text-primary">{value}</dd>
+    </div>
   );
 }

@@ -69,6 +69,24 @@ public class ThreeColorDrawApiTests : IClassFixture<WebApplicationFactory<Progra
         return await Json(res);
     }
 
+    /// <summary>Fecha a rodada pela súmula de três cores com um confronto 0 x 0 entre as duas primeiras cores.</summary>
+    private static Task<HttpResponseMessage> CloseScorelessAsync(Scenario s, JsonElement draw, object[] presence)
+        => s.Admin.PostAsJsonAsync($"/api/matches/{s.MatchId}/result/round", new
+        {
+            presence,
+            games = new[]
+            {
+                new
+                {
+                    homeTeamId = draw.GetProperty("teams")[0].GetProperty("id").GetGuid(),
+                    awayTeamId = draw.GetProperty("teams")[1].GetProperty("id").GetGuid(),
+                    homeScore = 0,
+                    awayScore = 0
+                }
+            },
+            goals = Array.Empty<object>()
+        });
+
     private static string Composition(JsonElement draw)
         => string.Join(" / ", draw.GetProperty("teams").EnumerateArray().Select(t =>
             t.GetProperty("color").GetString() + ":" + string.Join(",", t.GetProperty("members").EnumerateArray()
@@ -239,12 +257,7 @@ public class ThreeColorDrawApiTests : IClassFixture<WebApplicationFactory<Progra
         Assert.True(adminView.GetProperty("isLocked").GetBoolean());
 
         // A rodada segue até o fechamento, com a ausência registrada na presença.
-        var close = await s.Admin.PostAsJsonAsync($"/api/matches/{s.MatchId}/result/close", new
-        {
-            homeScore = 2, awayScore = 1, winnerTeamId = draw.GetProperty("teams")[0].GetProperty("id").GetGuid(),
-            presence = new[] { new { playerProfileId = s.Players["L5"].ProfileId, present = false } },
-            ratings = Array.Empty<object>()
-        });
+        var close = await CloseScorelessAsync(s, draw, [new { playerProfileId = s.Players["L5"].ProfileId, present = false }]);
         Assert.Equal(HttpStatusCode.OK, close.StatusCode);
         var history = await Json(await s.Players["L5"].Client.GetAsync($"/api/players/{s.Players["L5"].ProfileId}/history"));
         Assert.Equal("Absent", history.GetProperty("history")[0].GetProperty("status").GetString());
@@ -258,11 +271,7 @@ public class ThreeColorDrawApiTests : IClassFixture<WebApplicationFactory<Progra
         var drawId = draw.GetProperty("id").GetGuid();
         Assert.Equal(HttpStatusCode.OK, (await s.Admin.PostAsync($"/api/matches/{s.MatchId}/draw/{drawId}/confirm", null)).StatusCode);
 
-        var close = await s.Admin.PostAsJsonAsync($"/api/matches/{s.MatchId}/result/close", new
-        {
-            homeScore = 1, awayScore = 0, winnerTeamId = draw.GetProperty("teams")[0].GetProperty("id").GetGuid(),
-            presence = Array.Empty<object>(), ratings = Array.Empty<object>()
-        });
+        var close = await CloseScorelessAsync(s, draw, []);
         Assert.Equal(HttpStatusCode.OK, close.StatusCode);
 
         var teams = draw.GetProperty("teams").EnumerateArray().ToList();

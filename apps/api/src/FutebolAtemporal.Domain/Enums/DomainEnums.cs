@@ -73,5 +73,8 @@ public enum TeamRole
 
 public enum AwardType
 {
-    ManOfTheMatch = 0
+    /// <summary>Melhor Jogador da partida (antigo "craque").</summary>
+    ManOfTheMatch = 0,
+    /// <summary>Melhor Goleiro da partida: exige ter atuado no gol.</summary>
+    BestGoalkeeper = 1
 }

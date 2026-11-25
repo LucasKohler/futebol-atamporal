@@ -166,25 +166,27 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         var drawId = draw.GetProperty("id").GetGuid();
         var confirm = await client.PostAsync($"/api/matches/{matchId}/draw/{drawId}/confirm", null);
         Assert.Equal(HttpStatusCode.OK, confirm.StatusCode);
-        var winnerTeamId = draw.GetProperty("teams")[0].GetProperty("id").GetGuid();
+        var teamA = draw.GetProperty("teams")[0].GetProperty("id").GetGuid();
+        var teamB = draw.GetProperty("teams")[1].GetProperty("id").GetGuid();
 
-        var close = await client.PostAsJsonAsync($"/api/matches/{matchId}/result/close", new
+        // Rodada de três cores fecha pela súmula; o fechamento A/B antigo é recusado.
+        var legacy = await client.PostAsJsonAsync($"/api/matches/{matchId}/result/close", new
         {
-            homeScore = 3,
-            awayScore = 1,
-            winnerTeamId,
-            manOfTheMatchPlayerProfileId = playerProfile,
-            notes = "ok",
+            homeScore = 3, awayScore = 1, winnerTeamId = teamA, presence = Array.Empty<object>(), ratings = Array.Empty<object>()
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, legacy.StatusCode);
+
+        var close = await client.PostAsJsonAsync($"/api/matches/{matchId}/result/round", new
+        {
             presence = new[]
             {
                 new { playerProfileId = adminProfile, present = true },
                 new { playerProfileId = playerProfile, present = true }
             },
-            ratings = new[]
-            {
-                new { playerProfileId = adminProfile, score = 7 },
-                new { playerProfileId = playerProfile, score = 8 }
-            }
+            games = new[] { new { homeTeamId = teamA, awayTeamId = teamB, homeScore = 0, awayScore = 0 } },
+            goals = Array.Empty<object>(),
+            bestPlayerProfileId = playerProfile,
+            notes = "ok"
         });
         Assert.Equal(HttpStatusCode.OK, close.StatusCode);
 

@@ -161,6 +161,94 @@ export type RankingRow = {
   winRate: number;
 };
 
+// ---------- Pós-jogo de três cores (súmula) ----------
+
+export type RoundSheetPayload = {
+  presence: { playerProfileId: string; present: boolean; playedGoalkeeper?: boolean | null }[];
+  games: { homeTeamId: string; awayTeamId: string; homeScore: number; awayScore: number }[];
+  /** game = número do confronto (1, 2, 3...). */
+  goals: { game: number; playerProfileId: string; ownGoal: boolean }[];
+  bestPlayerProfileId?: string | null;
+  bestGoalkeeperProfileId?: string | null;
+  notes?: string | null;
+  /** Obrigatório na correção. */
+  reason?: string | null;
+};
+
+export type RoundTeam = {
+  teamId: string;
+  name: string;
+  color: string | null;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+  isRoundWinner: boolean;
+};
+
+export type RoundResult = {
+  matchId: string;
+  isLegacy: boolean;
+  revision: number | null;
+  isCurrentRevision: boolean;
+  closedAt: string;
+  localDate: string;
+  teams: RoundTeam[];
+  games: {
+    order: number;
+    homeTeamId: string;
+    awayTeamId: string;
+    homeScore: number;
+    awayScore: number;
+    outcome: string;
+    goals: { playerProfileId: string; displayName: string; teamId: string; ownGoal: boolean }[];
+  }[];
+  participants: {
+    playerProfileId: string;
+    displayName: string;
+    teamId: string;
+    present: boolean;
+    playedGoalkeeper: boolean;
+    goals: number;
+    ownGoals: number;
+  }[];
+  bestPlayerProfileId: string | null;
+  bestPlayerName: string | null;
+  bestGoalkeeperProfileId: string | null;
+  bestGoalkeeperName: string | null;
+  notes: string | null;
+  legacyHomeScore: number | null;
+  legacyAwayScore: number | null;
+  legacyWinnerTeamId: string | null;
+  revisions: { revision: number; isCurrent: boolean; createdAt: string; reason: string | null }[];
+};
+
+export type Scorer = { playerProfileId: string; displayName: string; goals: number; position: number; isLeader: boolean };
+
+export type SeasonStats = {
+  year: number;
+  month: number | null;
+  timeZoneId: string;
+  monthScorers: Scorer[];
+  yearScorers: Scorer[];
+  colors: { color: string; roundsWon: number; wins: number; draws: number; losses: number; goalsFor: number; goalsAgainst: number }[];
+  players: {
+    playerProfileId: string;
+    displayName: string;
+    roundsPlayed: number;
+    roundsWon: number;
+    gamesWon: number;
+    goals: number;
+    ownGoals: number;
+    bestPlayer: number;
+    bestGoalkeeper: number;
+  }[];
+  rounds: { matchId: string; title: string | null; localDate: string; isLegacy: boolean; winnerColors: string[]; games: string[] }[];
+};
+
 /**
  * Mensagem legível de um erro da API: regra de negócio (detail), erro de campo
  * (ValidationProblemDetails.errors) ou título genérico.
@@ -403,6 +491,35 @@ export const api = {
       credentials: "include",
       body: JSON.stringify(body),
     }).then((r) => parseJson<unknown>(r));
+  },
+  getRound(matchId: string, revision?: number) {
+    const qs = revision ? `?revision=${revision}` : "";
+    return fetch(url(`/api/matches/${matchId}/result/round${qs}`), { credentials: "include" }).then((r) => {
+      if (r.status === 404) return null;
+      return parseJson<RoundResult>(r);
+    });
+  },
+  closeRound(matchId: string, body: RoundSheetPayload) {
+    return fetch(url(`/api/matches/${matchId}/result/round`), {
+      method: "POST",
+      headers: jsonHeaders,
+      credentials: "include",
+      body: JSON.stringify(body),
+    }).then((r) => parseJson<RoundResult>(r));
+  },
+  correctRound(matchId: string, body: RoundSheetPayload) {
+    return fetch(url(`/api/matches/${matchId}/result/round`), {
+      method: "PUT",
+      headers: jsonHeaders,
+      credentials: "include",
+      body: JSON.stringify(body),
+    }).then((r) => parseJson<RoundResult>(r));
+  },
+  season(groupId: string, year?: number, month?: number | null) {
+    const qs = new URLSearchParams();
+    if (year) qs.set("year", String(year));
+    if (month) qs.set("month", String(month));
+    return fetch(url(`/api/groups/${groupId}/season?${qs}`), { credentials: "include" }).then((r) => parseJson<SeasonStats>(r));
   },
   rankings(groupId: string, sortBy = "wins") {
     return fetch(url(`/api/groups/${groupId}/rankings?sortBy=${sortBy}`), { credentials: "include" }).then((r) =>

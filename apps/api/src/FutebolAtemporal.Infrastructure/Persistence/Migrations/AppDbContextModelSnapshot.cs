@@ -260,6 +260,45 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                     b.ToTable("MatchResults");
                 });
 
+            modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchResultRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("MatchId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SheetJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MatchId", "IsCurrent");
+
+                    b.HasIndex("MatchId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("MatchResultRevisions");
+                });
+
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchTeam", b =>
                 {
                     b.Property<Guid>("Id")
@@ -826,6 +865,17 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchResult", b =>
+                {
+                    b.HasOne("FutebolAtemporal.Domain.Entities.Match", "Match")
+                        .WithMany()
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Match");
+                });
+
+            modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchResultRevision", b =>
                 {
                     b.HasOne("FutebolAtemporal.Domain.Entities.Match", "Match")
                         .WithMany()

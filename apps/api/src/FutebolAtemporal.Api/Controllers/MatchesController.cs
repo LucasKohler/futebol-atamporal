@@ -153,7 +153,13 @@ public sealed record SwapRequest(Guid PlayerA, Guid PlayerB);
 public sealed class ResultsController : ControllerBase
 {
     private readonly IResultService _results;
-    public ResultsController(IResultService results) => _results = results;
+    private readonly IRoundResultService _rounds;
+
+    public ResultsController(IResultService results, IRoundResultService rounds)
+    {
+        _results = results;
+        _rounds = rounds;
+    }
 
     [HttpGet]
     public async Task<ActionResult> Get(Guid matchId, CancellationToken ct)
@@ -162,9 +168,41 @@ public sealed class ResultsController : ControllerBase
         return r is null ? NotFound() : Ok(r);
     }
 
+    /// <summary>Fechamento antigo (placar A/B), mantido para sorteios antigos.</summary>
     [HttpPost("close")]
     public async Task<ActionResult> Close(Guid matchId, [FromBody] CloseMatchRequest body, CancellationToken ct)
         => Ok(await _results.CloseAsync(User.GetUserId(), matchId, body, ct));
+
+    /// <summary>Súmula de três cores: vigente ou revisão anterior (?revision=N, só admin). Legado A/B vem com isLegacy.</summary>
+    [HttpGet("round")]
+    public async Task<ActionResult> GetRound(Guid matchId, [FromQuery] int? revision, CancellationToken ct)
+    {
+        var r = await _rounds.GetRoundAsync(User.GetUserId(), matchId, revision, ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpPost("round")]
+    public async Task<ActionResult> CloseRound(Guid matchId, [FromBody] RoundSheetRequest body, CancellationToken ct)
+        => Ok(await _rounds.CloseRoundAsync(User.GetUserId(), matchId, body, ct));
+
+    /// <summary>Correção auditada: exige motivo e cria nova revisão (a anterior continua consultável).</summary>
+    [HttpPut("round")]
+    public async Task<ActionResult> CorrectRound(Guid matchId, [FromBody] RoundSheetRequest body, CancellationToken ct)
+        => Ok(await _rounds.CorrectRoundAsync(User.GetUserId(), matchId, body, ct));
+}
+
+[ApiController]
+[Authorize]
+[Route("api/groups/{groupId:guid}/season")]
+public sealed class SeasonController : ControllerBase
+{
+    private readonly IRoundResultService _rounds;
+    public SeasonController(IRoundResultService rounds) => _rounds = rounds;
+
+    /// <summary>Artilharia do mês/ano (data local do jogo), vitórias por cor, jogadores e rodadas.</summary>
+    [HttpGet]
+    public async Task<ActionResult> Get(Guid groupId, [FromQuery] int? year, [FromQuery] int? month, CancellationToken ct)
+        => Ok(await _rounds.GetSeasonAsync(User.GetUserId(), groupId, year, month, ct));
 }
 
 [ApiController]
