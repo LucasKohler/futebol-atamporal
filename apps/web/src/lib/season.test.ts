@@ -42,8 +42,34 @@ describe("myStats", () => {
       ],
       rounds: [],
     };
-    expect(myStats(season, "a")).toEqual({ monthGoals: 2, yearGoals: 5, roundsPlayed: 3, roundsWon: 1, bestPlayer: 1, bestGoalkeeper: 0 });
+    // API anterior ao contrato ao vivo (sem penaltySaves): conta 0.
+    expect(myStats(season, "a")).toEqual({
+      monthGoals: 2,
+      yearGoals: 5,
+      roundsPlayed: 3,
+      roundsWon: 1,
+      bestPlayer: 1,
+      bestGoalkeeper: 0,
+      gamesWonOnPenalties: 0,
+      penaltySaves: 0,
+    });
     expect(myStats(season, "x")).toMatchObject({ monthGoals: 0, yearGoals: 0, roundsPlayed: 0 });
     expect(myStats(null, "a")).toBeNull();
+  });
+
+  it("reads penalty saves and wins on penalties (live matches)", () => {
+    const season: SeasonStats = {
+      year: 2026,
+      month: 11,
+      timeZoneId: "America/Sao_Paulo",
+      monthScorers: [],
+      yearScorers: [],
+      colors: [],
+      players: [
+        { playerProfileId: "g", displayName: "Goleiro", roundsPlayed: 1, roundsWon: 1, gamesWon: 3, goals: 0, ownGoals: 0, bestPlayer: 0, bestGoalkeeper: 1, gamesWonOnPenalties: 2, penaltySaves: 4 },
+      ],
+      rounds: [],
+    };
+    expect(myStats(season, "g")).toMatchObject({ penaltySaves: 4, gamesWonOnPenalties: 2, bestGoalkeeper: 1 });
   });
 });

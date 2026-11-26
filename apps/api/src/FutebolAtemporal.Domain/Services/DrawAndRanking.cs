@@ -1,4 +1,4 @@
-namespace FutebolAtemporal.Domain.Services;
+﻿namespace FutebolAtemporal.Domain.Services;
 
 public sealed record DrawPlayer(Guid PlayerProfileId, decimal SkillRating, string DisplayName);
 public sealed record DrawnTeam(string Name, IReadOnlyList<DrawPlayer> Players, decimal TotalSkill);
@@ -74,7 +74,9 @@ public static class RankingCalculator
         int Absences,
         int ManOfTheMatch,
         decimal? AverageRating,
-        decimal WinRate);
+        decimal WinRate,
+        int PenaltySaves = 0,
+        int BestGoalkeeper = 0);
 
     public static IReadOnlyList<PlayerStats> Order(IEnumerable<PlayerStats> stats, string sortBy)
         => sortBy.ToLowerInvariant() switch
@@ -86,6 +88,10 @@ public static class RankingCalculator
                 .OrderByDescending(s => s.AverageRating).ThenByDescending(s => s.Matches)
                 .ThenBy(s => s.DisplayName, StringComparer.OrdinalIgnoreCase).ToList(),
             "motm" or "craque" => stats.OrderByDescending(s => s.ManOfTheMatch)
+                .ThenByDescending(s => s.Matches)
+                .ThenBy(s => s.DisplayName, StringComparer.OrdinalIgnoreCase).ToList(),
+            "penaltysaves" => stats.OrderByDescending(s => s.PenaltySaves)
+                .ThenByDescending(s => s.BestGoalkeeper)
                 .ThenByDescending(s => s.Matches)
                 .ThenBy(s => s.DisplayName, StringComparer.OrdinalIgnoreCase).ToList(),
             _ => stats.OrderByDescending(s => s.Wins).ThenByDescending(s => s.Matches)

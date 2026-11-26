@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using FutebolAtemporal.Application.Draws;
 using FutebolAtemporal.Application.Matches;
 using FutebolAtemporal.Application.Memberships;
@@ -232,4 +232,50 @@ public sealed class PlayersController : ControllerBase
         var h = await _stats.GetPlayerHistoryAsync(User.GetUserId(), playerProfileId, ct);
         return h is null ? NotFound() : Ok(h);
     }
+}
+[ApiController]
+[Authorize]
+[Route("api/matches/{matchId:guid}/live")]
+public sealed class LiveMatchController : ControllerBase
+{
+    private readonly IRoundResultService _rounds;
+    public LiveMatchController(IRoundResultService rounds) => _rounds = rounds;
+
+    [HttpGet]
+    public async Task<ActionResult<LiveDayDto>> Get(Guid matchId, CancellationToken ct)
+    {
+        var live = await _rounds.GetLiveAsync(User.GetUserId(), matchId, ct);
+        return live is null ? NotFound() : Ok(live);
+    }
+
+    [HttpPost("games")]
+    public async Task<ActionResult<LiveDayDto>> StartOrInsertGame(Guid matchId, [FromBody] StartLiveGameRequest body, CancellationToken ct)
+    {
+        var live = await _rounds.StartOrInsertLiveGameAsync(User.GetUserId(), matchId, body, ct);
+        return StatusCode(StatusCodes.Status201Created, live);
+    }
+
+    [HttpPost("games/{gameId:guid}/goals")]
+    public async Task<ActionResult<LiveDayDto>> AddGoal(Guid matchId, Guid gameId, [FromBody] AddLiveGoalRequest body, CancellationToken ct)
+        => Ok(await _rounds.AddLiveGoalAsync(User.GetUserId(), matchId, gameId, body, ct));
+
+    [HttpDelete("games/{gameId:guid}/goals/{goalId:guid}")]
+    public async Task<ActionResult<LiveDayDto>> RemoveGoal(Guid matchId, Guid gameId, Guid goalId, [FromQuery] int expectedVersion, CancellationToken ct)
+        => Ok(await _rounds.RemoveLiveGoalAsync(User.GetUserId(), matchId, gameId, goalId, expectedVersion, ct));
+
+    [HttpPost("games/{gameId:guid}/finish")]
+    public async Task<ActionResult<LiveDayDto>> FinishGame(Guid matchId, Guid gameId, [FromBody] FinishLiveGameRequest body, CancellationToken ct)
+        => Ok(await _rounds.FinishLiveGameAsync(User.GetUserId(), matchId, gameId, body, ct));
+
+    [HttpPut("games/{gameId:guid}")]
+    public async Task<ActionResult<LiveDayDto>> UpdateGame(Guid matchId, Guid gameId, [FromBody] UpdateLiveGameRequest body, CancellationToken ct)
+        => Ok(await _rounds.UpdateLiveGameAsync(User.GetUserId(), matchId, gameId, body, ct));
+
+    [HttpDelete("games/{gameId:guid}")]
+    public async Task<ActionResult<LiveDayDto>> DeleteGame(Guid matchId, Guid gameId, [FromQuery] int expectedVersion, CancellationToken ct)
+        => Ok(await _rounds.DeleteLiveGameAsync(User.GetUserId(), matchId, gameId, expectedVersion, ct));
+
+    [HttpPut("presence")]
+    public async Task<ActionResult<LiveDayDto>> UpdatePresence(Guid matchId, [FromBody] UpdateLivePresenceRequest body, CancellationToken ct)
+        => Ok(await _rounds.UpdateLivePresenceAsync(User.GetUserId(), matchId, body, ct));
 }

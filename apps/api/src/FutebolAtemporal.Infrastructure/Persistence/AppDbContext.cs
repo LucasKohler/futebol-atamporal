@@ -1,4 +1,4 @@
-using FutebolAtemporal.Domain.Entities;
+﻿using FutebolAtemporal.Domain.Entities;
 using FutebolAtemporal.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -18,12 +18,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<MonthlyMembership> MonthlyMemberships => Set<MonthlyMembership>();
     public DbSet<MembershipBillingPeriod> MembershipBillingPeriods => Set<MembershipBillingPeriod>();
     public DbSet<MembershipPayment> MembershipPayments => Set<MembershipPayment>();
+    public DbSet<MatchFeePayment> MatchFeePayments => Set<MatchFeePayment>();
+    public DbSet<PixCharge> PixCharges => Set<PixCharge>();
     public DbSet<TeamDraw> TeamDraws => Set<TeamDraw>();
     public DbSet<MatchTeam> MatchTeams => Set<MatchTeam>();
     public DbSet<MatchTeamMember> MatchTeamMembers => Set<MatchTeamMember>();
     public DbSet<MatchResult> MatchResults => Set<MatchResult>();
     public DbSet<PlayerMatchRating> PlayerMatchRatings => Set<PlayerMatchRating>();
     public DbSet<MatchResultRevision> MatchResultRevisions => Set<MatchResultRevision>();
+    public DbSet<MatchLiveSheet> MatchLiveSheets => Set<MatchLiveSheet>();
     public DbSet<PlayerAward> PlayerAwards => Set<PlayerAward>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
@@ -105,8 +108,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         {
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.MonthlyMembershipId, x.BillingPeriodId }).IsUnique();
-            e.Property(x => x.Amount).HasPrecision(10, 2);
-            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Amount).HasPrecision(10, 2).IsConcurrencyToken();
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsConcurrencyToken();
             e.Property(x => x.Notes).HasMaxLength(1000);
             e.HasOne(x => x.MonthlyMembership).WithMany().HasForeignKey(x => x.MonthlyMembershipId);
             e.HasOne(x => x.BillingPeriod).WithMany().HasForeignKey(x => x.BillingPeriodId);
@@ -157,6 +160,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasOne(x => x.Match).WithMany().HasForeignKey(x => x.MatchId);
         });
 
+        builder.Entity<MatchLiveSheet>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.MatchId).IsUnique();
+            e.Property(x => x.SheetJson).IsRequired();
+            e.Property(x => x.Version).IsConcurrencyToken();
+            e.HasOne(x => x.Match).WithMany().HasForeignKey(x => x.MatchId);
+        });
+
         builder.Entity<PlayerMatchRating>(e =>
         {
             e.HasKey(x => x.Id);
@@ -183,6 +195,45 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.Property(x => x.Action).HasMaxLength(80).IsRequired();
             e.Property(x => x.EntityType).HasMaxLength(80).IsRequired();
             e.Property(x => x.PayloadJson).HasColumnType("text");
+        });
+
+        builder.Entity<MatchFeePayment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.MatchId, x.PlayerProfileId }).IsUnique();
+            e.HasIndex(x => new { x.GroupId, x.Status });
+            e.Property(x => x.UpdatedAt).IsConcurrencyToken();
+            e.Property(x => x.Amount).HasPrecision(10, 2);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.PaymentSource).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.GroupId);
+            e.HasOne(x => x.Match).WithMany().HasForeignKey(x => x.MatchId);
+            e.HasOne(x => x.PlayerProfile).WithMany().HasForeignKey(x => x.PlayerProfileId);
+        });
+
+        builder.Entity<PixCharge>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.MpPaymentId).IsUnique();
+            e.HasIndex(x => x.IdempotencyKey).IsUnique();
+            e.HasIndex(x => new { x.MembershipPaymentId, x.Status });
+            e.HasIndex(x => new { x.MatchFeePaymentId, x.Status });
+            e.HasIndex(x => new { x.GroupId, x.Status, x.ExpiresAt });
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsConcurrencyToken();
+            e.Property(x => x.Amount).HasPrecision(10, 2);
+            e.Property(x => x.Description).HasMaxLength(200).IsRequired();
+            e.Property(x => x.MpPaymentId).HasMaxLength(80).IsRequired();
+            e.Property(x => x.IdempotencyKey).HasMaxLength(64).IsRequired();
+            e.Property(x => x.QrCode).HasColumnType("text").IsRequired();
+            e.Property(x => x.QrCodeBase64).HasColumnType("text");
+            e.Property(x => x.ProviderStatus).HasMaxLength(40);
+            e.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.GroupId);
+            e.HasOne(x => x.PlayerProfile).WithMany().HasForeignKey(x => x.PlayerProfileId);
+            e.HasOne(x => x.MembershipPayment).WithMany().HasForeignKey(x => x.MembershipPaymentId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.MatchFeePayment).WithMany().HasForeignKey(x => x.MatchFeePaymentId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Match).WithMany().HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<ApplicationUser>(e =>

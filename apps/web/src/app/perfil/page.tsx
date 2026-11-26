@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
+import { PaymentsLink } from "@/components/pix/PaymentsLink";
 import { api, SeasonStats } from "@/lib/api";
 import { playerDisplayName } from "@/lib/playerDisplayName";
 import { groupPeriod, monthName, myStats } from "@/lib/season";
@@ -46,6 +47,10 @@ export default function PerfilPage() {
         <p className="mt-2 text-label-md">Nota de linha: {history.skillRating.toFixed(1)}</p>
       ) : null}
 
+      <div className="mt-md">
+        <PaymentsLink />
+      </div>
+
       <div className="mt-lg grid grid-cols-2 gap-md">
         <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-md">
           <p className="text-label-sm uppercase text-on-surface-variant">Partidas</p>
@@ -70,6 +75,8 @@ export default function PerfilPage() {
             <Stat label={`Gols em ${season.year}`} value={mine.yearGoals} />
             <Stat label="Melhor Jogador (mês)" value={mine.bestPlayer} />
             <Stat label="Melhor Goleiro (mês)" value={mine.bestGoalkeeper} />
+            <Stat label="🧤 Pênaltis defendidos (mês)" value={mine.penaltySaves} />
+            <Stat label="Vitórias nos pênaltis (mês)" value={mine.gamesWonOnPenalties} />
           </dl>
         </section>
       ) : null}
@@ -83,6 +90,8 @@ export default function PerfilPage() {
               <p className="text-label-md text-on-surface-variant">
                 {new Date(h.startsAt).toLocaleDateString("pt-BR")} · {h.status}
                 {h.rating != null ? ` · nota ${h.rating}` : ""}
+                {h.playedGoalkeeper ? " · no gol" : ""}
+                {h.penaltySaves ? ` · 🧤 ${h.penaltySaves}` : ""}
               </p>
             </li>
           ))}

@@ -1,18 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { api, Draw, MatchDetail } from "@/lib/api";
-import { buildWhatsAppSummary } from "@/lib/matchSummary";
+import { WhatsAppSummary } from "@/components/WhatsAppSummary";
+import { PaymentsLink } from "@/components/pix/PaymentsLink";
+import { PublicLiveDay } from "@/components/live/PublicLiveDay";
+import { AdminConfirmButton } from "@/components/admin/AdminDrawer";
+import { AdminSearch } from "@/components/admin/AdminSearch";
+import { RoundStepper } from "@/components/admin/RoundStepper";
+import { focusRing, inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
+import { filterRegistrations } from "@/lib/adminFilters";
+import { api, Draw, MatchDetail, MatchSummary } from "@/lib/api";
 import { playerDisplayName } from "@/lib/playerDisplayName";
 import { formatRating } from "@/lib/ratings";
+import { deriveRoundStep } from "@/lib/roundStep";
 import { buildTeamsSummary, isGoalkeeper, isLineupFrozen, orderedMembers, teamStyle } from "@/lib/teams";
 import { matchStatusLabel, registrationStatusLabel, useSession } from "@/lib/useSession";
 
-const focusRing =
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch-green-container";
-const primaryButton = `min-h-11 rounded-full bg-pitch-green-container px-4 py-3 text-label-md text-on-primary disabled:opacity-50 ${focusRing}`;
-const secondaryButton = `min-h-11 rounded-full border border-outline px-4 py-3 text-label-md disabled:opacity-50 ${focusRing}`;
+/** A partir desse total de inscritos, o admin ganha busca na lista. */
+const SEARCH_THRESHOLD = 8;
 
 function formatWhen(iso: string, timeZone?: string) {
   return new Date(iso).toLocaleString("pt-BR", {
@@ -34,10 +41,14 @@ export default function PartidaPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const [draw, setDraw] = useState<Draw | null>(null);
+  /** Sorteio como está (prévia ou confirmado), só para o stepper do admin. */
+  const [rawDraw, setRawDraw] = useState<Draw | null>(null);
+  const [query, setQuery] = useState("");
 
   /** Só a escalação confirmada e ainda válida aparece na tela da partida. */
   const loadDraw = useCallback(async (matchId: string) => {
     const d = await api.getDraw(matchId).catch(() => null);
+    setRawDraw(d);
     setDraw(d && d.status === "Confirmed" && !d.rosterChanged ? d : null);
   }, []);
 
@@ -46,7 +57,10 @@ export default function PartidaPage() {
       const d = await api.upcomingMatch(groupId);
       setDetail(d);
       if (d) await loadDraw(d.match.id);
-      else setDraw(null);
+      else {
+        setDraw(null);
+        setRawDraw(null);
+      }
       setLoaded(true);
     },
     [loadDraw],
@@ -177,38 +191,6 @@ export default function PartidaPage() {
                     Sair da lista
                   </button>
                 )}
-                {isAdmin && match.status === "Draft" ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className={primaryButton}
-                    onClick={() => run(async () => void (await api.transitionMatch(match.id, "RegistrationOpen")), "Inscrições abertas.")}
-                  >
-                    Abrir inscrições
-                  </button>
-                ) : null}
-                {isAdmin && match.status === "RegistrationOpen" ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className={secondaryButton}
-                    onClick={() =>
-                      run(async () => void (await api.transitionMatch(match.id, "RegistrationClosed")), "Inscrições encerradas.")
-                    }
-                  >
-                    Encerrar inscrições
-                  </button>
-                ) : null}
-                {isAdmin && match.status === "RegistrationClosed" ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className={secondaryButton}
-                    onClick={() => run(async () => void (await api.transitionMatch(match.id, "RegistrationOpen")), "Inscrições reabertas.")}
-                  >
-                    Reabrir inscrições
-                  </button>
-                ) : null}
                 <button
                   type="button"
                   disabled={busy}
@@ -226,6 +208,18 @@ export default function PartidaPage() {
               {notice ? <p className="mt-md text-label-md text-on-surface-variant">{notice}</p> : null}
             </section>
 
+            {isAdmin ? (
+              <AdminMatchPanel
+                match={match}
+                rawDraw={rawDraw}
+                busy={busy}
+                onTransition={(to, success) => run(async () => void (await api.transitionMatch(match.id, to)), success)}
+                onUpdate={(body) => run(async () => void (await api.updateMatch(match.id, body)), "Dados da partida salvos.")}
+              />
+            ) : null}
+
+            {["Drawn", "InProgress", "AwaitingClose"].includes(match.status) ? <PublicLiveDay matchId={match.id} matchStatus={match.status} /> : null}
+
             {draw ? <ConfirmedTeams draw={draw} /> : null}
 
             {isAdmin ? (
@@ -236,6 +230,8 @@ export default function PartidaPage() {
               />
             ) : null}
 
+            {detail.myStatus === "Confirmed" ? <PaymentsLink text="Avulso? Pague a diária desta pelada com Pix." /> : null}
+
             <section className="rounded-xl border-l-4 border-pitch-green-container bg-surface-container-low p-md">
               <h3 className="text-label-md">Ordem da fila</h3>
               <p className="mt-1 text-body-md text-on-surface-variant">
@@ -244,9 +240,20 @@ export default function PartidaPage() {
               </p>
             </section>
 
+            {isAdmin && detail.confirmed.length + detail.waitlist.length >= SEARCH_THRESHOLD ? (
+              <AdminSearch
+                label="Buscar na lista e na fila"
+                placeholder="Nome ou apelido"
+                value={query}
+                onChange={setQuery}
+                resultCount={filterRegistrations([...detail.confirmed, ...detail.waitlist], query).length}
+              />
+            ) : null}
+
             <PlayerList
               title="Confirmados"
-              players={detail.confirmed}
+              players={isAdmin ? filterRegistrations(detail.confirmed, query) : detail.confirmed}
+              positionOf={(p) => detail.confirmed.findIndex((x) => x.registrationId === p.registrationId) + 1}
               isAdmin={isAdmin}
               canRemove={isAdmin && !frozen}
               busy={busy}
@@ -257,7 +264,7 @@ export default function PartidaPage() {
             />
             <PlayerList
               title="Fila de espera"
-              players={detail.waitlist}
+              players={isAdmin ? filterRegistrations(detail.waitlist, query) : detail.waitlist}
               isAdmin={isAdmin}
               canRemove={isAdmin && !frozen}
               busy={busy}
@@ -284,7 +291,6 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-/** Admin copia o texto da lista e compartilha pela própria conta do WhatsApp (o app não envia nada). */
 /** Escalação confirmada: times por texto e cor, goleiro identificado, sem notas. */
 function ConfirmedTeams({ draw }: { draw: Draw }) {
   const teams = [...draw.teams].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -321,78 +327,6 @@ function ConfirmedTeams({ draw }: { draw: Draw }) {
   );
 }
 
-function WhatsAppSummary({ detail, teams, timeZone }: { detail: MatchDetail; teams: string | null; timeZone: string }) {
-  const [copied, setCopied] = useState<string | null>(null);
-  const [showText, setShowText] = useState(false);
-  const [text, setText] = useState("");
-
-  function currentText() {
-    const link = `${window.location.origin}/partida`;
-    const value = buildWhatsAppSummary(detail, { link, now: new Date(), timeZone, teams });
-    setText(value);
-    return value;
-  }
-
-  // Texto aberto acompanha a lista e a escalação: após entrar, sair, remover ou confirmar, regenera.
-  useEffect(() => {
-    if (!showText) return;
-    setText(buildWhatsAppSummary(detail, { link: `${window.location.origin}/partida`, now: new Date(), timeZone, teams }));
-  }, [detail, showText, timeZone, teams]);
-
-  async function copy() {
-    const value = currentText();
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied("Resumo copiado. Cole no grupo do WhatsApp.");
-    } catch {
-      setShowText(true);
-      setCopied("Não foi possível copiar automaticamente. Selecione o texto abaixo e copie.");
-    }
-  }
-
-  return (
-    <section aria-labelledby="resumo-titulo" className="rounded-xl border border-outline-variant bg-surface-container-lowest p-md">
-      <h2 id="resumo-titulo" className="text-headline-md">
-        Resumo para o WhatsApp
-      </h2>
-      <p className="mt-1 text-body-md text-on-surface-variant">
-        Data, local, vagas, confirmados e fila na ordem da lista. Sem telefone, nota ou pagamento.
-      </p>
-      <div className="mt-md flex flex-col gap-2 sm:flex-row">
-        <button type="button" onClick={copy} className={primaryButton}>
-          Copiar resumo
-        </button>
-        <button
-          type="button"
-          aria-expanded={showText}
-          aria-controls="resumo-texto"
-          onClick={() => {
-            if (!showText) currentText();
-            setShowText((v) => !v);
-          }}
-          className={secondaryButton}
-        >
-          {showText ? "Ocultar texto" : "Ver texto"}
-        </button>
-      </div>
-      <p aria-live="polite" className="mt-2 text-label-md text-on-surface-variant">
-        {copied ?? ""}
-      </p>
-      {showText ? (
-        <textarea
-          id="resumo-texto"
-          readOnly
-          aria-label="Texto do resumo da lista"
-          value={text}
-          rows={Math.min(24, text.split("\n").length + 1)}
-          onFocus={(e) => e.currentTarget.select()}
-          className={`mt-2 w-full rounded-lg border border-outline-variant bg-surface-container-low p-3 font-mono text-label-md ${focusRing}`}
-        />
-      ) : null}
-    </section>
-  );
-}
-
 function PlayerList({
   title,
   players,
@@ -402,6 +336,7 @@ function PlayerList({
   onRemove,
   emptyText,
   waitlist,
+  positionOf,
 }: {
   title: string;
   players: MatchDetail["confirmed"];
@@ -412,6 +347,8 @@ function PlayerList({
   onRemove: (p: MatchDetail["confirmed"][number]) => void;
   emptyText: string;
   waitlist?: boolean;
+  /** Posição real na lista completa (a busca filtra sem renumerar). */
+  positionOf?: (p: MatchDetail["confirmed"][number]) => number;
 }) {
   return (
     <section aria-label={`${title} (${players.length})`}>
@@ -427,15 +364,14 @@ function PlayerList({
           <ol>
             {players.map((p, i) => {
               const name = playerDisplayName(p.displayName);
+              const position = waitlist ? (p.waitlistPosition ?? i + 1) : (positionOf?.(p) ?? i + 1);
               return (
                 <li
                   key={p.registrationId}
-                  className="flex items-center justify-between gap-2 border-b border-outline-variant px-md py-sm last:border-0"
+                  className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant px-md py-sm last:border-0"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="w-7 shrink-0 text-label-md text-on-surface-variant">
-                      {waitlist ? `${p.waitlistPosition ?? i + 1}º` : `${i + 1}.`}
-                    </span>
+                    <span className="w-7 shrink-0 text-label-md text-on-surface-variant">{waitlist ? `${position}º` : `${position}.`}</span>
                     <div className="min-w-0">
                       <p className="truncate text-body-md font-semibold">{name}</p>
                       {isAdmin && p.skillRating !== null ? (
@@ -443,20 +379,19 @@ function PlayerList({
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                     <span className="rounded-full bg-secondary-container px-2 py-0.5 text-label-md">
                       {p.priorityClass === "Monthly" ? "Mensalista" : "Avulso"}
                     </span>
                     {canRemove ? (
-                      <button
-                        type="button"
+                      <AdminConfirmButton
+                        label="Remover"
+                        question={`Remover ${name}?`}
+                        confirmLabel="Remover"
                         disabled={busy}
-                        aria-label={`Remover ${name} da lista`}
                         className={`min-h-11 px-2 text-label-md text-error underline disabled:opacity-50 ${focusRing}`}
-                        onClick={() => onRemove(p)}
-                      >
-                        Remover
-                      </button>
+                        onConfirm={() => onRemove(p)}
+                      />
                     ) : null}
                   </div>
                 </li>
@@ -466,6 +401,144 @@ function PlayerList({
         )}
       </div>
     </section>
+  );
+}
+
+/** "2026-11-28T10:00" no fuso do aparelho, para o campo datetime-local (mesma regra do formulário de criação). */
+function toLocalInput(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Controles do admin na tela da partida: etapa da rodada, transições da lista e edição dos dados. */
+function AdminMatchPanel({
+  match,
+  rawDraw,
+  busy,
+  onTransition,
+  onUpdate,
+}: {
+  match: MatchSummary;
+  rawDraw: Draw | null;
+  busy: boolean;
+  onTransition: (to: string, success: string) => void;
+  onUpdate: (body: { title: string | null; startsAt: string; location: string; playerLimit: number; notes: string | null }) => void;
+}) {
+  const step = deriveRoundStep({ status: match.status, confirmedCount: match.confirmedCount, draw: rawDraw });
+  const editable = match.status !== "Completed" && match.status !== "Cancelled";
+  const frozen = isLineupFrozen(match.status);
+  const SUCCESS: Record<string, string> = {
+    RegistrationOpen: "Inscrições abertas.",
+    InProgress: "Partida iniciada. O elenco está congelado.",
+    AwaitingClose: "Jogo encerrado. Falta lançar a súmula.",
+  };
+
+  return (
+    <section aria-labelledby="admin-partida-titulo" className="flex flex-col gap-sm rounded-xl border-l-4 border-pitch-green-container bg-surface-container-low p-md">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="admin-partida-titulo" className="text-headline-md">
+          Painel do admin
+        </h2>
+        <Link href="/admin" className={`inline-flex min-h-11 items-center text-label-md underline ${focusRing}`}>
+          Central do admin
+        </Link>
+      </div>
+
+      <RoundStepper state={step} busy={busy} hideCtaOn="/partida" onTransition={(to) => onTransition(to, SUCCESS[to] ?? "Partida atualizada.")} />
+
+      <div className="flex flex-wrap gap-2">
+        {match.status === "RegistrationOpen" ? (
+          <AdminConfirmButton
+            tone="neutral"
+            label="Encerrar inscrições"
+            question="Ninguém mais entra ou sai pela lista. Encerrar?"
+            confirmLabel="Encerrar inscrições"
+            disabled={busy}
+            onConfirm={() => onTransition("RegistrationClosed", "Inscrições encerradas.")}
+          />
+        ) : null}
+        {match.status === "RegistrationClosed" ? (
+          <button type="button" disabled={busy} className={secondaryButton} onClick={() => onTransition("RegistrationOpen", "Inscrições reabertas.")}>
+            Reabrir inscrições
+          </button>
+        ) : null}
+        {match.status === "InProgress" ? (
+          <button type="button" disabled={busy} className={secondaryButton} onClick={() => onTransition("AwaitingClose", SUCCESS.AwaitingClose)}>
+            Encerrar jogo (aguardar súmula)
+          </button>
+        ) : null}
+      </div>
+
+      {editable ? <EditMatchDetails match={match} frozen={frozen} busy={busy} onSave={onUpdate} /> : null}
+    </section>
+  );
+}
+
+function EditMatchDetails({
+  match,
+  frozen,
+  busy,
+  onSave,
+}: {
+  match: MatchSummary;
+  frozen: boolean;
+  busy: boolean;
+  onSave: (body: { title: string | null; startsAt: string; location: string; playerLimit: number; notes: string | null }) => void;
+}) {
+  const [title, setTitle] = useState(match.title ?? "");
+  const [when, setWhen] = useState(() => toLocalInput(match.startsAt));
+  const [location, setLocation] = useState(match.location);
+  const [limit, setLimit] = useState(match.playerLimit);
+  const [notes, setNotes] = useState(match.notes ?? "");
+
+  return (
+    <details className="rounded-lg border border-outline-variant bg-surface-container-lowest">
+      <summary className={`flex min-h-11 cursor-pointer items-center px-md text-label-md ${focusRing}`}>Editar dados da partida</summary>
+      <form
+        className="flex flex-col gap-md px-md pb-md"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave({ title: title.trim() || null, startsAt: new Date(when).toISOString(), location: location.trim(), playerLimit: limit, notes: notes.trim() || null });
+        }}
+      >
+        <label className="flex flex-col gap-1 text-label-md">
+          Título
+          <input className={inputClass} value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+        <div className="grid gap-md sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-label-md">
+            Data/hora
+            <input type="datetime-local" required className={inputClass} value={when} onChange={(e) => setWhen(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1 text-label-md">
+            Limite de jogadores
+            <input
+              type="number"
+              min={2}
+              max={60}
+              required
+              disabled={frozen}
+              className={`${inputClass} disabled:opacity-50`}
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+            />
+            {frozen ? <span className="font-normal text-on-surface-variant">Partida iniciada: o limite não muda mais.</span> : null}
+          </label>
+        </div>
+        <label className="flex flex-col gap-1 text-label-md">
+          Local
+          <input required className={inputClass} value={location} maxLength={200} onChange={(e) => setLocation(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-label-md">
+          Observações
+          <textarea className={inputClass} rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </label>
+        <button type="submit" disabled={busy} className={`${primaryButton} self-start`}>
+          Salvar dados
+        </button>
+      </form>
+    </details>
   );
 }
 

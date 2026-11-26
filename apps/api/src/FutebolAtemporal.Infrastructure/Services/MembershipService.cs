@@ -1,3 +1,4 @@
+using FutebolAtemporal.Application.Payments;
 using FutebolAtemporal.Application.Memberships;
 using FutebolAtemporal.Domain.Entities;
 using FutebolAtemporal.Domain.Enums;
@@ -131,9 +132,29 @@ public sealed class MembershipService : IMembershipService
 
         var rows = await q.OrderBy(x => x.per.Year).ThenBy(x => x.per.Month).ThenBy(x => x.pay.Id).ToListAsync(ct);
         var names = await AccessHelper.DisplayNamesForProfilesAsync(_db, rows.Select(r => r.mem.PlayerProfileId), ct);
+        var paymentIds = rows.Select(r => r.pay.Id).ToList();
+        var latestPixByPayment = paymentIds.Count == 0
+            ? new Dictionary<Guid, PixChargeSummaryDto>()
+            : (await _db.PixCharges.AsNoTracking()
+                .Where(c => c.MembershipPaymentId != null && paymentIds.Contains(c.MembershipPaymentId.Value))
+                .ToListAsync(ct)).OrderByDescending(c => c.CreatedAt)
+                .GroupBy(c => c.MembershipPaymentId!.Value)
+                .ToDictionary(
+                    g => g.Key,
+                    g =>
+                    {
+                        var c = g.First();
+                        var effStatus = c.Status == PixChargeStatus.Pending && c.ExpiresAt <= DateTimeOffset.UtcNow
+                            ? PixChargeStatus.Expired
+                            : c.Status;
+                        return new PixChargeSummaryDto(c.Id, c.MpPaymentId, effStatus.ToString(), c.Amount, c.ExpiresAt, c.CreatedAt, c.ApprovedAt, c.IsSimulated);
+                    });
+
         return rows.Select(r => new PaymentDto(
             r.pay.Id, r.mem.Id, names.GetValueOrDefault(r.mem.PlayerProfileId, "Jogador"),
-            r.per.Id, r.per.Label, r.pay.Amount, r.pay.Status.ToString(), r.pay.PaidAt, r.pay.Notes)).ToList();
+            r.per.Id, r.per.Label, r.pay.Amount, r.pay.Status.ToString(), r.pay.PaidAt, r.pay.Notes,
+            r.mem.PlayerProfileId, r.pay.PaymentSource.ToString(),
+            latestPixByPayment.GetValueOrDefault(r.pay.Id))).ToList();
     }
 
     public async Task<PaymentDto> UpsertPaymentAsync(Guid userId, Guid groupId, Guid membershipId, Guid periodId, UpsertPaymentRequest request, CancellationToken ct = default)
@@ -148,6 +169,9 @@ public sealed class MembershipService : IMembershipService
 
         var pay = await _db.MembershipPayments
             .FirstOrDefaultAsync(p => p.MonthlyMembershipId == membershipId && p.BillingPeriodId == periodId, ct);
+        if (pay is not null && pay.Status == PaymentStatus.Paid && pay.PaymentSource == PaymentSource.Pix)
+            throw new ConflictException("Esta mensalidade já foi quitada via Pix e não pode ser alterada manualmente.");
+
         if (pay is null)
         {
             pay = new MembershipPayment
@@ -164,13 +188,14 @@ public sealed class MembershipService : IMembershipService
         pay.Status = request.Status;
         pay.Notes = request.Notes;
         pay.PaidAt = request.Status == PaymentStatus.Paid ? DateTimeOffset.UtcNow : null;
+        pay.PaymentSource = request.Status == PaymentStatus.Paid ? PaymentSource.Manual : PaymentSource.None;
         pay.RecordedByUserId = userId;
         pay.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync(ct);
 
         var name = (await AccessHelper.DisplayNamesForProfilesAsync(_db, [membership.PlayerProfileId], ct))[membership.PlayerProfileId];
-        return new PaymentDto(pay.Id, membershipId, name, periodId, period.Label, pay.Amount, pay.Status.ToString(), pay.PaidAt, pay.Notes);
+        return new PaymentDto(pay.Id, membershipId, name, periodId, period.Label, pay.Amount, pay.Status.ToString(), pay.PaidAt, pay.Notes, membership.PlayerProfileId, pay.PaymentSource.ToString(), null);
     }
 
     /// <summary>Admin do grupo da rota e mensalista pertencente a esse mesmo grupo.</summary>

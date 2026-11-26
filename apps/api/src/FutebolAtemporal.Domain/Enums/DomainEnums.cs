@@ -1,4 +1,4 @@
-namespace FutebolAtemporal.Domain.Enums;
+﻿namespace FutebolAtemporal.Domain.Enums;
 
 public enum GroupRole
 {
@@ -77,4 +77,30 @@ public enum AwardType
     ManOfTheMatch = 0,
     /// <summary>Melhor Goleiro da partida: exige ter atuado no gol.</summary>
     BestGoalkeeper = 1
+}
+
+public enum PaymentSource
+{
+    None = 0,
+    Manual = 1,
+    Pix = 2
+}
+
+public enum PixChargeKind
+{
+    Membership = 0,
+    MatchDay = 1
+}
+
+public enum PixChargeStatus
+{
+    Pending = 0,
+    Approved = 1,
+    Cancelled = 2,
+    Expired = 3
+}
+public enum RoundGameStatus
+{
+    InProgress = 0,
+    Finished = 1
 }

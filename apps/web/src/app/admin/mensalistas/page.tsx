@@ -1,279 +1,435 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AppShell } from "@/components/AppShell";
-import { api, GroupPlayer, MonthlyMember, Payment } from "@/lib/api";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AdminEmpty, AdminError, AdminKpiStrip, AdminLoading, AdminNotice, StatusBadge, type BadgeTone } from "@/components/admin/AdminCard";
+import { AdminConfirmButton } from "@/components/admin/AdminDrawer";
+import { AdminFilterChips, AdminSearch } from "@/components/admin/AdminSearch";
+import { AdminShell } from "@/components/admin/AdminShell";
+import { AdminTabs } from "@/components/admin/AdminTabs";
+import { inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
+import {
+  filterMembers,
+  filterPayments,
+  formatMoney,
+  MEMBER_FILTERS,
+  MEMBER_STATUS_LABEL,
+  PAYMENT_FILTERS,
+  PAYMENT_STATUS_LABEL,
+  recentPeriods,
+  summarizePayments,
+  type MemberFilter,
+  type PaymentFilter,
+} from "@/lib/adminFilters";
+import { AdminPixPanel, GatewayBadge, GatewaySettingsCard, MatchFeesPanel, PixTransactionsPanel } from "@/components/admin/pix/PixAdmin";
+import { api, GatewayStatus, MonthlyMember, Payment, PixCharge } from "@/lib/api";
+import { usePixFocusReturn } from "@/components/pix/usePixFocusReturn";
+import { obligationActions, paidBySource, PAYMENT_SOURCE_LABEL, pixSummaryText } from "@/lib/pix";
 import { playerDisplayName } from "@/lib/playerDisplayName";
-import { formatRating, RatingsPayload, validateRatings } from "@/lib/ratings";
+import { groupPeriod, monthName, type Period } from "@/lib/season";
 import { useSession } from "@/lib/useSession";
 
-/** Notas separadas de linha e goleiro (0 a 10). Goleiro vazio = sem nota, diferente de zero. */
-function RatingsEditor({
-  player,
-  save,
-  onSaved,
-}: {
-  player: GroupPlayer;
-  save: (body: RatingsPayload) => Promise<GroupPlayer>;
-  onSaved: (updated: GroupPlayer) => void;
-}) {
-  const id = player.playerProfileId;
-  const [line, setLine] = useState(String(player.lineRating));
-  const [canGk, setCanGk] = useState(player.canPlayGoalkeeper);
-  const [gk, setGk] = useState(player.goalkeeperRating === null ? "" : String(player.goalkeeperRating));
-  const [status, setStatus] = useState<{ error: boolean; text: string } | null>(null);
-  const [busy, setBusy] = useState(false);
+type Tab = "cobrancas" | "diarias" | "pix" | "vinculos";
 
-  // Ressincroniza o formulário quando a lista é recarregada do servidor com valores diferentes,
-  // sem remontar o componente (preserva a mensagem de confirmação).
+const PAYMENT_TONE: Record<string, BadgeTone> = { Paid: "success", Pending: "warning", Overdue: "danger", Exempt: "info", Cancelled: "neutral" };
+
+const samePeriod = (a: Period, b: Period) => a.year === b.year && a.month === b.month;
+const periodKey = (p: Period) => `${p.year}-${p.month}`;
+
+/**
+ * Mensalidades por competência (mês/ano no fuso do grupo) e vínculos de mensalistas.
+ * Rota mantida em /admin/mensalistas por compatibilidade; notas e apelidos foram para Elenco & Notas.
+ */
+export default function MensalidadesPage() {
+  const { group, isAdmin } = useSession();
+  const current = useMemo(() => (group ? groupPeriod(new Date(), group.timeZoneId) : null), [group]);
+  const [period, setPeriod] = useState<Period | null>(null);
+  const [tab, setTab] = useState<Tab>("cobrancas");
+  const [payments, setPayments] = useState<Payment[] | null>(null);
+  const [members, setMembers] = useState<MonthlyMember[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [payQuery, setPayQuery] = useState("");
+  const [payFilter, setPayFilter] = useState<PaymentFilter>("all");
+  const [memberQuery, setMemberQuery] = useState("");
+  const [memberFilter, setMemberFilter] = useState<MemberFilter>("active");
+  const [gateway, setGateway] = useState<GatewayStatus | null>(null);
+  const [pixOpen, setPixOpen] = useState<{ paymentId: string; name: string; charge: PixCharge } | null>(null);
+  const { remember, restore } = usePixFocusReturn();
+
   useEffect(() => {
-    setLine(String(player.lineRating));
-    setCanGk(player.canPlayGoalkeeper);
-    setGk(player.goalkeeperRating === null ? "" : String(player.goalkeeperRating));
-  }, [player.lineRating, player.canPlayGoalkeeper, player.goalkeeperRating]);
-
-  return (
-    <form
-      className="mt-2 flex flex-wrap items-end gap-2"
-      aria-label={`Notas de ${player.registeredName}`}
-      onSubmit={async (e) => {
-        e.preventDefault();
-        const result = validateRatings({ lineRating: line, canPlayGoalkeeper: canGk, goalkeeperRating: gk });
-        if (!result.ok) {
-          setStatus({ error: true, text: result.error });
-          return;
-        }
-        setBusy(true);
-        try {
-          const updated = await save(result.value);
-          onSaved(updated);
-          setStatus({
-            error: false,
-            text: `Notas salvas: linha ${formatRating(updated.lineRating)}, goleiro ${formatRating(updated.goalkeeperRating)}.`,
-          });
-        } catch (err) {
-          setStatus({ error: true, text: err instanceof Error ? err.message : "Erro ao salvar notas" });
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <label className="text-label-md" htmlFor={`linha-${id}`}>
-        Nota de linha
-        <input
-          id={`linha-${id}`}
-          inputMode="decimal"
-          className="mt-1 block w-20 rounded-lg border border-outline-variant px-2 py-1 text-body-md"
-          value={line}
-          onChange={(e) => setLine(e.target.value)}
-        />
-      </label>
-      <label className="flex min-h-11 items-center gap-1 text-label-md">
-        <input
-          type="checkbox"
-          checked={canGk}
-          onChange={(e) => {
-            setCanGk(e.target.checked);
-            if (!e.target.checked) setGk("");
-          }}
-        />
-        Apto para o gol
-      </label>
-      <label className="text-label-md" htmlFor={`gol-${id}`}>
-        Nota de goleiro
-        <input
-          id={`gol-${id}`}
-          inputMode="decimal"
-          placeholder="sem nota"
-          disabled={!canGk}
-          className="mt-1 block w-20 rounded-lg border border-outline-variant px-2 py-1 text-body-md disabled:opacity-50"
-          value={gk}
-          onChange={(e) => setGk(e.target.value)}
-        />
-      </label>
-      <button type="submit" disabled={busy} className="min-h-11 text-label-md underline disabled:opacity-50">
-        Salvar notas
-      </button>
-      {status ? (
-        <p role={status.error ? "alert" : "status"} className={`w-full text-label-md ${status.error ? "text-error" : "text-on-surface-variant"}`}>
-          {status.text}
-        </p>
-      ) : null}
-    </form>
-  );
-}
-
-export default function MensalistasPage() {
-  const { group, loading, isAdmin } = useSession();
-  const [players, setPlayers] = useState<GroupPlayer[]>([]);
-  const [members, setMembers] = useState<MonthlyMember[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [periodId, setPeriodId] = useState<string | null>(null);
-  const [nickDraft, setNickDraft] = useState<Record<string, string>>({});
-  const [msg, setMsg] = useState<string | null>(null);
-
-  async function reload(groupId: string) {
-    const now = new Date();
-    const period = await api.ensurePeriod(groupId, now.getFullYear(), now.getMonth() + 1);
-    setPeriodId(period.id);
-    const [plist, mlist, plistPay] = await Promise.all([
-      api.listPlayers(groupId),
-      api.listMembers(groupId),
-      api.listPayments(groupId, now.getFullYear(), now.getMonth() + 1),
-    ]);
-    setPlayers(plist);
-    setMembers(mlist);
-    setPayments(plistPay);
-    setNickDraft(Object.fromEntries(plist.map((p) => [p.playerProfileId, p.nickname ?? ""])));
-  }
+    if (current && !period) setPeriod(current);
+  }, [current, period]);
 
   useEffect(() => {
     if (!group || !isAdmin) return;
-    reload(group.id).catch((e) => setMsg(e.message));
+    // Falha aqui não bloqueia a baixa manual: o selo fica em "verificando".
+    api.paymentSettings(group.id).then(setGateway).catch(() => undefined);
   }, [group, isAdmin]);
 
-  if (loading) return <div className="flex min-h-dvh items-center justify-center">Carregando…</div>;
-  if (!isAdmin) return <AppShell><p>Acesso admin.</p></AppShell>;
+  const loadPayments = useCallback(
+    async (p: Period) => {
+      if (!group || !current) return;
+      // Mês corrente: abre a competência como antes (gera as cobranças pendentes dos ativos, idempotente).
+      if (samePeriod(p, current)) await api.ensurePeriod(group.id, p.year, p.month);
+      setPayments(await api.listPayments(group.id, p.year, p.month));
+    },
+    [group, current],
+  );
+
+  const loadMembers = useCallback(async () => {
+    if (!group) return;
+    setMembers(await api.listMembers(group.id));
+  }, [group]);
+
+  useEffect(() => {
+    if (!group || !isAdmin || !period) return;
+    setPayments(null);
+    setError(null);
+    loadPayments(period).catch((e) => setError(e instanceof Error ? e.message : "Não foi possível carregar as mensalidades."));
+  }, [group, isAdmin, period, loadPayments]);
+
+  useEffect(() => {
+    if (!group || !isAdmin) return;
+    loadMembers().catch((e) => setError(e instanceof Error ? e.message : "Não foi possível carregar os vínculos."));
+  }, [group, isAdmin, loadMembers]);
+
+  async function act(id: string, action: () => Promise<unknown>, success: string, reload: () => Promise<void>) {
+    setBusyId(id);
+    setError(null);
+    setNotice(null);
+    try {
+      await action();
+      await reload();
+      setNotice(success);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao salvar.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const options = useMemo(() => (current ? recentPeriods(current, 12) : []), [current]);
+  const summary = useMemo(() => (payments ? summarizePayments(payments) : null), [payments]);
+  const bySource = useMemo(() => paidBySource(payments ?? []), [payments]);
+
+  /** Admin gera/vê o Pix da mensalidade para enviar ao jogador (mesma rota do jogador; a API autoriza admin). */
+  async function openPix(paymentId: string, name: string) {
+    setBusyId(paymentId);
+    setError(null);
+    try {
+      setPixOpen({ paymentId, name, charge: await api.createMembershipPix(paymentId) });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Não foi possível gerar o Pix.");
+      if (period) await loadPayments(period).catch(() => undefined);
+    } finally {
+      setBusyId(null);
+    }
+  }
+  const visiblePayments = useMemo(() => (payments ? filterPayments(payments, payQuery, payFilter) : []), [payments, payQuery, payFilter]);
+  const visibleMembers = useMemo(() => (members ? filterMembers(members, memberQuery, memberFilter) : []), [members, memberQuery, memberFilter]);
+  const label = period ? `${monthName(period.month)} de ${period.year}` : "";
 
   return (
-    <AppShell>
-      <h1 className="text-headline-lg">Mensalistas</h1>
-      <p className="mt-1 text-body-md text-on-surface-variant">Jogadores, apelidos, notas de linha e goleiro e pagamentos do mês</p>
-      {msg ? <p className="mt-md text-error">{msg}</p> : null}
+    <AdminShell
+      moduleId="mensalidades"
+      title="Mensalidades & Pix"
+      description="Mensalidades por competência, diárias dos avulsos e cobranças Pix do Mercado Pago. Apelidos e notas ficam em Elenco & Notas."
+      actions={<GatewayBadge gateway={gateway} />}
+    >
+      {error ? <AdminError>{error}</AdminError> : null}
+      {notice ? <AdminNotice>{notice}</AdminNotice> : null}
 
-      <section className="mt-lg">
-        <h2 className="text-headline-md">Jogadores</h2>
-        <div className="mt-sm overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
-          {players.map((p) => (
-            <div key={p.playerProfileId} className="border-b border-outline-variant px-md py-sm last:border-0">
-              <p className="font-semibold">{playerDisplayName(p.registeredName, p.nickname)}</p>
-              <p className="text-label-md text-on-surface-variant">
-                {p.registeredName} · {p.phone}
-                {p.isMonthlyMember ? " · mensalista" : ""}
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <input
-                  aria-label={`Apelido de ${p.registeredName}`}
-                  className="min-w-[10rem] flex-1 rounded-lg border border-outline-variant px-2 py-1 text-body-md"
-                  placeholder="Apelido fixo"
-                  value={nickDraft[p.playerProfileId] ?? ""}
-                  onChange={(e) => setNickDraft((d) => ({ ...d, [p.playerProfileId]: e.target.value }))}
-                />
-                <button
-                  type="button"
-                  className="text-label-md underline"
-                  onClick={async () => {
-                    try {
-                      const nick = nickDraft[p.playerProfileId]?.trim() || null;
-                      const updated = await api.setNickname(group!.id, p.playerProfileId, nick);
-                      setPlayers((list) =>
-                        list.map((row) => (row.playerProfileId === updated.playerProfileId ? updated : row)),
-                      );
-                      setNickDraft((d) => ({ ...d, [updated.playerProfileId]: updated.nickname ?? "" }));
-                      await reload(group!.id);
-                    } catch (e) {
-                      setMsg(e instanceof Error ? e.message : "Erro ao salvar apelido");
-                    }
-                  }}
-                >
-                  Salvar apelido
-                </button>
-                {!p.isMonthlyMember ? (
-                  <button
-                    type="button"
-                    className="text-label-md underline"
-                    onClick={async () => {
-                      await api.addMember(group!.id, p.playerProfileId);
-                      await reload(group!.id);
-                    }}
-                  >
-                    Tornar mensalista
-                  </button>
-                ) : null}
-              </div>
-              <RatingsEditor
-                key={p.playerProfileId}
-                player={p}
-                onSaved={(updated) =>
-                  setPlayers((list) => list.map((row) => (row.playerProfileId === updated.playerProfileId ? updated : row)))
+      <AdminTabs
+        label="Mensalidades e Pix"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "cobrancas", label: "Cobranças mensais" },
+          { id: "diarias", label: "Diárias da rodada" },
+          { id: "pix", label: "Transações Pix" },
+          { id: "vinculos", label: "Vínculos & Config", badge: members ? `(${members.filter((m) => m.status === "Active").length})` : undefined },
+        ]}
+      >
+        {tab === "cobrancas" ? (
+          <div className="flex flex-col gap-md">
+            <label className="flex flex-col gap-1 text-label-md sm:max-w-xs">
+              Competência
+              <select
+                className={inputClass}
+                value={period ? periodKey(period) : ""}
+                onChange={(e) => {
+                  const [y, m] = e.target.value.split("-").map(Number);
+                  setPeriod({ year: y, month: m });
+                }}
+              >
+                {options.map((o) => (
+                  <option key={periodKey(o)} value={periodKey(o)}>
+                    {monthName(o.month)} de {o.year}
+                    {current && samePeriod(o, current) ? " (atual)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {payments === null || !summary ? (
+              error ? null : <AdminLoading label="Carregando cobranças…" />
+            ) : summary.total === 0 ? (
+              <AdminEmpty
+                action={
+                  period && current && !samePeriod(period, current) ? (
+                    <AdminConfirmButton
+                      tone="neutral"
+                      label={`Abrir competência de ${label}`}
+                      question="Gera uma cobrança pendente para cada mensalista ativo hoje. Abrir?"
+                      confirmLabel="Abrir competência"
+                      disabled={busyId === "period"}
+                      className={primaryButton}
+                      onConfirm={() =>
+                        act(
+                          "period",
+                          () => api.ensurePeriod(group!.id, period.year, period.month),
+                          `Competência de ${label} aberta.`,
+                          () => loadPayments(period),
+                        )
+                      }
+                    />
+                  ) : null
                 }
-                save={(body) => api.setRatings(group!.id, p.playerProfileId, body)}
+              >
+                Nenhuma cobrança em {label}.{" "}
+                {period && current && samePeriod(period, current)
+                  ? "Não há mensalistas ativos: torne jogadores mensalistas em Elenco & Notas."
+                  : "A competência ainda não foi aberta."}
+              </AdminEmpty>
+            ) : (
+              <>
+                <AdminKpiStrip
+                  label={`Resumo de ${label}`}
+                  items={[
+                    {
+                      label: "Pagos",
+                      value: summary.paid,
+                      hint: `${bySource.pixCount} via Pix · ${bySource.manualCount} baixa manual (de ${summary.total})`,
+                    },
+                    {
+                      label: "Pendentes",
+                      value: summary.open,
+                      tone: summary.open > 0 ? "warning" : undefined,
+                      hint: summary.overdue > 0 ? `${summary.overdue} atrasados` : undefined,
+                    },
+                    { label: "Isentos", value: summary.exempt, hint: summary.cancelled > 0 ? `${summary.cancelled} cancelados` : undefined },
+                    { label: "Recebido", value: formatMoney(summary.received), hint: `de ${formatMoney(summary.expected)} previstos` },
+                  ]}
+                />
+                <div className="flex flex-col gap-sm">
+                  <AdminSearch label="Buscar mensalista" placeholder="Nome ou apelido" value={payQuery} onChange={setPayQuery} resultCount={visiblePayments.length} />
+                  <AdminFilterChips
+                    label="Filtrar cobranças"
+                    options={PAYMENT_FILTERS}
+                    value={payFilter}
+                    onChange={setPayFilter}
+                    counts={{ all: summary.total, open: summary.open, paid: summary.paid, exempt: summary.exempt }}
+                  />
+                </div>
+                {pixOpen ? (
+                  <AdminPixPanel
+                    title={`Pix da mensalidade · ${pixOpen.name}`}
+                    charge={pixOpen.charge}
+                    onClose={() => {
+                      const key = `m:${pixOpen.paymentId}`;
+                      setPixOpen(null);
+                      restore(key);
+                      loadPayments(period!).catch(() => undefined); // botão passa a "Ver QR Code Pix"
+                    }}
+                    onSettled={() => loadPayments(period!).catch(() => undefined)}
+                    onRegenerate={() => openPix(pixOpen.paymentId, pixOpen.name)}
+                  />
+                ) : null}
+                {visiblePayments.length === 0 ? (
+                  <AdminEmpty>Nenhuma cobrança com esses critérios.</AdminEmpty>
+                ) : (
+                  <ul className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
+                    {visiblePayments.map((p) => (
+                      <PaymentRow
+                        key={p.id}
+                        payment={p}
+                        timeZone={group?.timeZoneId}
+                        onPix={() => {
+                          remember(); // gatilho "Gerar/Ver Pix"; volta a ele ao fechar
+                          openPix(p.id, playerDisplayName(p.playerName));
+                        }}
+                        onSync={() =>
+                          p.latestPix &&
+                          act(p.id, () => api.verifyPix(p.latestPix!.id), `Pix de ${playerDisplayName(p.playerName)} sincronizado com o Mercado Pago.`, () =>
+                            loadPayments(period!),
+                          )
+                        }
+                        busy={busyId === p.id}
+                        onSet={(status, success) =>
+                          act(
+                            p.id,
+                            () => api.upsertPayment(group!.id, p.monthlyMembershipId, p.billingPeriodId, p.amount, status),
+                            success,
+                            () => loadPayments(period!),
+                          )
+                        }
+                      />
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+        ) : tab === "diarias" ? (
+          group ? <MatchFeesPanel groupId={group.id} timeZone={group.timeZoneId} /> : null
+        ) : tab === "pix" ? (
+          group ? <PixTransactionsPanel groupId={group.id} onGateway={setGateway} /> : null
+        ) : (
+          <div className="flex flex-col gap-md">
+            {group ? <GatewaySettingsCard groupId={group.id} gateway={gateway} onSaved={setGateway} /> : null}
+            <h2 className="text-headline-md">Vínculos de mensalistas</h2>
+            <div className="flex flex-col gap-sm">
+              <AdminSearch label="Buscar vínculo" placeholder="Nome ou apelido" value={memberQuery} onChange={setMemberQuery} resultCount={visibleMembers.length} />
+              <AdminFilterChips
+                label="Filtrar vínculos"
+                options={MEMBER_FILTERS}
+                value={memberFilter}
+                onChange={setMemberFilter}
+                counts={
+                  members
+                    ? { all: members.length, active: members.filter((m) => m.status === "Active").length, inactive: members.filter((m) => m.status !== "Active").length }
+                    : undefined
+                }
               />
             </div>
-          ))}
-          {players.length === 0 ? <p className="p-md text-on-surface-variant">Nenhum jogador.</p> : null}
-        </div>
-      </section>
+            {members === null ? (
+              <AdminLoading label="Carregando vínculos…" />
+            ) : visibleMembers.length === 0 ? (
+              <AdminEmpty
+                action={
+                  <Link href="/admin/elenco" className={secondaryButton}>
+                    Tornar jogadores mensalistas em Elenco & Notas
+                  </Link>
+                }
+              >
+                {members.length === 0 ? "Nenhum mensalista cadastrado." : "Nenhum vínculo com esses critérios."}
+              </AdminEmpty>
+            ) : (
+              <ul className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
+                {visibleMembers.map((m) => {
+                  const name = playerDisplayName(m.displayName);
+                  const active = m.status === "Active";
+                  return (
+                    <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant px-md py-sm last:border-0">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{name}</p>
+                        <p className="text-label-md text-on-surface-variant">Desde {new Date(m.startedAt).toLocaleDateString("pt-BR")}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge tone={active ? "success" : "neutral"}>{MEMBER_STATUS_LABEL[m.status] ?? m.status}</StatusBadge>
+                        {active ? (
+                          <AdminConfirmButton
+                            label="Desativar"
+                            question={`Desativar ${name}?`}
+                            confirmLabel="Desativar"
+                            disabled={busyId === m.id}
+                            onConfirm={() =>
+                              act(m.id, () => api.setMemberStatus(group!.id, m.id, "Inactive"), `${name} desativado.`, async () => {
+                                await loadMembers();
+                              })
+                            }
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={busyId === m.id}
+                            className={secondaryButton}
+                            onClick={() =>
+                              act(m.id, () => api.setMemberStatus(group!.id, m.id, "Active"), `${name} reativado.`, async () => {
+                                await loadMembers();
+                                if (period) await loadPayments(period);
+                              })
+                            }
+                          >
+                            Reativar
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
+      </AdminTabs>
+    </AdminShell>
+  );
+}
 
-      <section className="mt-lg">
-        <h2 className="text-headline-md">Vínculos</h2>
-        <div className="mt-sm overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
-          {members.map((m) => {
-            const linked = players.find((p) => p.playerProfileId === m.playerProfileId);
-            return (
-            <div key={m.id} className="flex items-center justify-between border-b border-outline-variant px-md py-sm last:border-0">
-              <div>
-                <p className="font-semibold">{playerDisplayName(linked?.registeredName ?? m.displayName, linked?.nickname)}</p>
-                <p className="text-label-md text-on-surface-variant">{m.status}</p>
-              </div>
-              {m.status === "Active" ? (
-                <button
-                  type="button"
-                  className="text-label-md underline"
-                  onClick={async () => {
-                    await api.setMemberStatus(group!.id, m.id, "Inactive");
-                    await reload(group!.id);
-                  }}
-                >
-                  Desativar
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="text-label-md underline"
-                  onClick={async () => {
-                    await api.setMemberStatus(group!.id, m.id, "Active");
-                    await reload(group!.id);
-                  }}
-                >
-                  Reativar
-                </button>
-              )}
-            </div>
-          );
-          })}
-          {members.length === 0 ? <p className="p-md text-on-surface-variant">Nenhum mensalista.</p> : null}
+function PaymentRow({
+  payment: p,
+  busy,
+  onSet,
+  onPix,
+  onSync,
+  timeZone,
+}: {
+  payment: Payment;
+  busy: boolean;
+  onSet: (status: string, success: string) => void;
+  onPix: () => void;
+  onSync: () => void;
+  timeZone?: string;
+}) {
+  const name = playerDisplayName(p.playerName);
+  const actions = obligationActions(p.status, p.paymentSource, p.latestPix, Date.now());
+  return (
+    <li data-pix-item={`m:${p.id}`} tabIndex={-1} className="flex flex-col gap-2 border-b border-outline-variant px-md py-sm last:border-0">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate font-semibold">{name}</p>
+          <p className="text-label-md text-on-surface-variant">
+            {formatMoney(p.amount)}
+            {p.paidAt ? ` · pago em ${new Date(p.paidAt).toLocaleDateString("pt-BR")}` : ""}
+            {p.status === "Paid" && p.paymentSource && p.paymentSource !== "None" ? ` · ${PAYMENT_SOURCE_LABEL[p.paymentSource]}` : ""}
+          </p>
+          {p.paymentSource !== undefined ? (
+            <p className="text-label-md text-on-surface-variant">{pixSummaryText(p.latestPix, p.paymentSource, Date.now(), timeZone)}</p>
+          ) : null}
         </div>
-      </section>
-
-      <section className="mt-lg">
-        <h2 className="text-headline-md">Pagamentos</h2>
-        <div className="mt-sm overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
-          {payments.map((p) => (
-            <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant px-md py-sm last:border-0">
-              <div>
-                <p className="font-semibold">{playerDisplayName(p.playerName)}</p>
-                <p className="text-label-md text-on-surface-variant">
-                  {p.periodLabel} · R$ {p.amount.toFixed(2)} · {p.status}
-                </p>
-              </div>
-              {p.status !== "Paid" && periodId ? (
-                <button
-                  type="button"
-                  className="rounded-full bg-pitch-green-container px-3 py-1.5 text-label-md text-on-primary"
-                  onClick={async () => {
-                    await api.upsertPayment(group!.id, p.monthlyMembershipId, p.billingPeriodId, p.amount, "Paid");
-                    await reload(group!.id);
-                  }}
-                >
-                  Marcar pago
-                </button>
-              ) : null}
-            </div>
-          ))}
-          {payments.length === 0 ? <p className="p-md text-on-surface-variant">Sem lançamentos.</p> : null}
-        </div>
-      </section>
-    </AppShell>
+        <StatusBadge tone={PAYMENT_TONE[p.status] ?? "neutral"}>{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</StatusBadge>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {actions.pix ? (
+          <button type="button" data-pix-trigger={`m:${p.id}`} disabled={busy} className={secondaryButton} onClick={onPix}>
+            {actions.sync ? "Ver QR Code Pix" : "Gerar Pix"}
+          </button>
+        ) : null}
+        {actions.sync ? (
+          <button type="button" disabled={busy} className={secondaryButton} onClick={onSync}>
+            Sincronizar com MP
+          </button>
+        ) : null}
+        {actions.markPaid ? (
+          <button type="button" disabled={busy} className={primaryButton} onClick={() => onSet("Paid", `Pagamento de ${name} registrado.`)}>
+            Marcar pago
+          </button>
+        ) : null}
+        {/* Pago via Pix é definitivo na tela (o dinheiro entrou no Mercado Pago); a API também recusa com 409. */}
+        {actions.revertPending ? (
+          <button type="button" disabled={busy} className={secondaryButton} onClick={() => onSet("Pending", `${name} voltou para pendente.`)}>
+            Voltar a pendente
+          </button>
+        ) : null}
+        {actions.exempt ? (
+          <button type="button" disabled={busy} className={secondaryButton} onClick={() => onSet("Exempt", `${name} isento em ${p.periodLabel}.`)}>
+            Isentar
+          </button>
+        ) : null}
+      </div>
+    </li>
   );
 }

@@ -60,5 +60,8 @@ export function myStats(season: SeasonStats | null, playerProfileId: string | nu
     roundsWon: row?.roundsWon ?? 0,
     bestPlayer: row?.bestPlayer ?? 0,
     bestGoalkeeper: row?.bestGoalkeeper ?? 0,
+    gamesWonOnPenalties: row?.gamesWonOnPenalties ?? 0,
+    /** Pênaltis defendidos no período (0 em APIs anteriores ao contrato ao vivo). */
+    penaltySaves: row?.penaltySaves ?? 0,
   };
 }

@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -183,7 +183,7 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
                 new { playerProfileId = adminProfile, present = true },
                 new { playerProfileId = playerProfile, present = true }
             },
-            games = new[] { new { homeTeamId = teamA, awayTeamId = teamB, homeScore = 0, awayScore = 0 } },
+            games = new[] { new { homeTeamId = teamA, awayTeamId = teamB, homeScore = 0, awayScore = 0, penaltyWinnerTeamId = teamA } },
             goals = Array.Empty<object>(),
             bestPlayerProfileId = playerProfile,
             notes = "ok"

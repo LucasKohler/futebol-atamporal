@@ -1,4 +1,4 @@
-using FutebolAtemporal.Domain.Enums;
+﻿using FutebolAtemporal.Domain.Enums;
 
 namespace FutebolAtemporal.Domain.Entities;
 
@@ -107,6 +107,7 @@ public class MembershipPayment
     public MembershipBillingPeriod BillingPeriod { get; set; } = null!;
     public decimal Amount { get; set; }
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
+    public PaymentSource PaymentSource { get; set; } = PaymentSource.None;
     public DateTimeOffset? PaidAt { get; set; }
     public string? Notes { get; set; }
     public Guid RecordedByUserId { get; set; }
@@ -221,4 +222,69 @@ public class AuditEntry
     public Guid? EntityId { get; set; }
     public string PayloadJson { get; set; } = "{}";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>Obrigação financeira de diária (avulso/diarista) vinculada a uma partida.</summary>
+public class MatchFeePayment
+{
+    public Guid Id { get; set; }
+    public Guid GroupId { get; set; }
+    public FootballGroup Group { get; set; } = null!;
+    public Guid MatchId { get; set; }
+    public Match Match { get; set; } = null!;
+    public Guid PlayerProfileId { get; set; }
+    public PlayerProfile PlayerProfile { get; set; } = null!;
+    public decimal Amount { get; set; }
+    public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
+    public PaymentSource PaymentSource { get; set; } = PaymentSource.None;
+    public DateTimeOffset? PaidAt { get; set; }
+    public Guid? RecordedByUserId { get; set; }
+    public string? Notes { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>Tentativa de cobrança Pix no Mercado Pago, separada da obrigação (mensalidade ou diária).</summary>
+public class PixCharge
+{
+    public Guid Id { get; set; }
+    public Guid GroupId { get; set; }
+    public FootballGroup Group { get; set; } = null!;
+    public Guid PlayerProfileId { get; set; }
+    public PlayerProfile PlayerProfile { get; set; } = null!;
+    public PixChargeKind Kind { get; set; }
+    public Guid? MembershipPaymentId { get; set; }
+    public MembershipPayment? MembershipPayment { get; set; }
+    public Guid? MatchFeePaymentId { get; set; }
+    public MatchFeePayment? MatchFeePayment { get; set; }
+    public Guid? MatchId { get; set; }
+    public Match? Match { get; set; }
+    public decimal Amount { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public string MpPaymentId { get; set; } = string.Empty;
+    public string IdempotencyKey { get; set; } = string.Empty;
+    public string QrCode { get; set; } = string.Empty;
+    public string? QrCodeBase64 { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; }
+    public PixChargeStatus Status { get; set; } = PixChargeStatus.Pending;
+    public string? ProviderStatus { get; set; }
+    public bool IsSimulated { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ApprovedAt { get; set; }
+}
+/// <summary>
+/// Rascunho ao vivo da pelada do dia (D2): guarda jogos, gols e defesas de pênalti em JSON v2
+/// com controle de concorrência otimista via Version.
+/// </summary>
+public class MatchLiveSheet
+{
+    public Guid Id { get; set; }
+    public Guid MatchId { get; set; }
+    public Match Match { get; set; } = null!;
+    public string SheetJson { get; set; } = "{}";
+    public int Version { get; set; } = 1;
+    public Guid UpdatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

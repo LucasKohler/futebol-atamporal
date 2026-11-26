@@ -125,6 +125,9 @@ export default function RankingsPage() {
                   <th scope="col">Cor</th>
                   <th scope="col">Rodadas vencidas</th>
                   <th scope="col">V</th>
+                  <th scope="col">
+                    <abbr title="Vitórias nos pênaltis alternados">V pên.</abbr>
+                  </th>
                   <th scope="col">E</th>
                   <th scope="col">D</th>
                   <th scope="col">Gols</th>
@@ -141,6 +144,7 @@ export default function RankingsPage() {
                       </th>
                       <td>{c.roundsWon}</td>
                       <td>{c.wins}</td>
+                      <td>{c.winsPenalties ?? 0}</td>
                       <td>{c.draws}</td>
                       <td>{c.losses}</td>
                       <td>
@@ -189,7 +193,9 @@ export default function RankingsPage() {
                 <p className="font-semibold">{playerDisplayName(p.displayName)}</p>
                 <p className="text-label-md text-on-surface-variant">
                   {plural(p.goals, "gol", "gols")} · {plural(p.roundsPlayed, "rodada", "rodadas")} · {plural(p.roundsWon, "rodada vencida", "rodadas vencidas")} ·{" "}
-                  {plural(p.gamesWon, "jogo vencido", "jogos vencidos")} · Melhor Jogador {p.bestPlayer}× · Melhor Goleiro {p.bestGoalkeeper}×
+                  {plural(p.gamesWon, "jogo vencido", "jogos vencidos")}
+                  {p.gamesWonOnPenalties ? ` (${p.gamesWonOnPenalties} nos pênaltis)` : ""} · Melhor Jogador {p.bestPlayer}× · Melhor Goleiro {p.bestGoalkeeper}×
+                  {p.penaltySaves ? ` · 🧤 ${plural(p.penaltySaves, "pênalti defendido", "pênaltis defendidos")}` : ""}
                 </p>
               </li>
             ))}
@@ -206,6 +212,7 @@ export default function RankingsPage() {
               ["winrate", "Aproveitamento"],
               ["rating", "Nota"],
               ["motm", "Craques"],
+              ["penaltySaves", "🧤 Pênaltis defendidos"],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -229,6 +236,7 @@ export default function RankingsPage() {
                     <p className="font-semibold">{playerDisplayName(r.displayName)}</p>
                     <p className="text-label-md text-on-surface-variant">
                       {r.matches} jogos · {r.wins}V {r.losses}D · {(r.winRate * 100).toFixed(0)}%
+                      {r.penaltySaves ? ` · 🧤 ${r.penaltySaves}` : ""}
                     </p>
                   </div>
                 </div>
@@ -237,6 +245,7 @@ export default function RankingsPage() {
                   {sortBy === "rating" ? r.averageRating?.toFixed(1) ?? "—" : null}
                   {sortBy === "wins" ? `${r.wins}V` : null}
                   {sortBy === "winrate" ? `${(r.winRate * 100).toFixed(0)}%` : null}
+                  {sortBy === "penaltySaves" ? <span aria-label={`${r.penaltySaves ?? 0} pênaltis defendidos`}>🧤 {r.penaltySaves ?? 0}</span> : null}
                 </div>
               </li>
             ))}

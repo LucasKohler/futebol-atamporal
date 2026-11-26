@@ -10,6 +10,10 @@ public sealed class GroupSettings
     public int DefaultPlayerLimit { get; set; } = 14;
     public int TeamCount { get; set; } = 2;
     public decimal DefaultMonthlyFee { get; set; } = 150m;
+    public decimal DefaultMatchDayFee { get; set; } = 25m;
+    public int PixExpirationMinutes { get; set; } = 60;
+
+    public string ToJson() => JsonSerializer.Serialize(this);
 
     public static GroupSettings Parse(string? json)
     {

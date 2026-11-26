@@ -159,3 +159,63 @@ export function awardCandidates(roster: RosterPlayer[], presence: PresenceState)
 export function gameLabel(game: Pick<GameForm, "homeTeamId" | "awayTeamId" | "homeScore" | "awayScore">, colorOf: (teamId: string) => string) {
   return `${colorOf(game.homeTeamId)} ${game.homeScore} x ${game.awayScore} ${colorOf(game.awayTeamId)}`;
 }
+
+export const MAX_SCORE = 99;
+
+/** Placar limitado a 0..99 (mesmo limite do campo numérico). */
+export function clampScore(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(MAX_SCORE, Math.trunc(value)));
+}
+
+export type SideProgress = { credited: number; score: number; missing: number; extra: number; ok: boolean };
+
+/** Gols atribuídos x placar, por lado do confronto (para o indicador "Gols atribuídos: X/Y"). */
+export function goalProgress(game: GameForm, roster: RosterPlayer[]): { home: SideProgress; away: SideProgress; ok: boolean } {
+  const credited = creditedScore(game, roster);
+  const side = (c: number, score: number): SideProgress => ({
+    credited: c,
+    score,
+    missing: Math.max(0, score - c),
+    extra: Math.max(0, c - score),
+    ok: c === score,
+  });
+  const home = side(credited.home, game.homeScore);
+  const away = side(credited.away, game.awayScore);
+  return { home, away, ok: home.ok && away.ok };
+}
+
+/**
+ * Gol rápido por chip: adiciona o gol e, se o placar daquele lado ficaria menor que os gols atribuídos,
+ * sobe o placar junto (um toque = um gol). Gol contra conta para o adversário de quem fez.
+ */
+export function addQuickGoal(game: GameForm, roster: RosterPlayer[], playerProfileId: string, ownGoal: boolean): GameForm {
+  const next: GameForm = { ...game, goals: [...game.goals, { playerProfileId, ownGoal }] };
+  const credited = creditedScore(next, roster);
+  return {
+    ...next,
+    homeScore: clampScore(Math.max(next.homeScore, credited.home)),
+    awayScore: clampScore(Math.max(next.awayScore, credited.away)),
+  };
+}
+
+/** Marca todos (ou só os de um time) como presentes, mantendo quem atuou no gol. */
+export function markAllPresent(presence: PresenceState, roster: RosterPlayer[], teamId?: string): PresenceState {
+  const next = { ...presence };
+  for (const p of roster) {
+    if (teamId && p.teamId !== teamId) continue;
+    next[p.playerProfileId] = { playedGoalkeeper: presence[p.playerProfileId]?.playedGoalkeeper ?? p.isGoalkeeper, present: true };
+  }
+  return next;
+}
+
+/** Remove prêmios que deixaram de ser elegíveis (ex.: premiado marcado ausente ou fora do gol). */
+export function pruneAwards(form: SheetForm, roster: RosterPlayer[]): SheetForm {
+  const c = awardCandidates(roster, form.presence);
+  const ok = (id: string, list: RosterPlayer[]) => !id || list.some((p) => p.playerProfileId === id);
+  return {
+    ...form,
+    bestPlayerProfileId: ok(form.bestPlayerProfileId, c.bestPlayer) ? form.bestPlayerProfileId : "",
+    bestGoalkeeperProfileId: ok(form.bestGoalkeeperProfileId, c.bestGoalkeeper) ? form.bestGoalkeeperProfileId : "",
+  };
+}

@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -80,9 +80,9 @@ public class RoundResultApiTests : IClassFixture<WebApplicationFactory<Program>>
             presence = Array.Empty<object>(),
             games = new[]
             {
-                new { homeTeamId = red.Id, awayTeamId = black.Id, homeScore = 2, awayScore = 1 },
-                new { homeTeamId = black.Id, awayTeamId = green.Id, homeScore = 0, awayScore = 0 },
-                new { homeTeamId = green.Id, awayTeamId = red.Id, homeScore = 1, awayScore = 0 }
+                new { homeTeamId = red.Id, awayTeamId = black.Id, homeScore = 2, awayScore = 1, penaltyWinnerTeamId = (Guid?)null },
+                new { homeTeamId = black.Id, awayTeamId = green.Id, homeScore = 0, awayScore = 0, penaltyWinnerTeamId = (Guid?)green.Id },
+                new { homeTeamId = green.Id, awayTeamId = red.Id, homeScore = 1, awayScore = 0, penaltyWinnerTeamId = (Guid?)null }
             },
             goals = new[]
             {
@@ -113,9 +113,9 @@ public class RoundResultApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.False(round.GetProperty("isLegacy").GetBoolean());
         Assert.Equal(1, round.GetProperty("revision").GetInt32());
         var teams = round.GetProperty("teams").EnumerateArray().ToDictionary(t => t.GetProperty("color").GetString()!);
-        Assert.Equal((1, 0, 1, 3), (teams["Vermelho"].GetProperty("wins").GetInt32(), teams["Vermelho"].GetProperty("draws").GetInt32(),
+        Assert.Equal((1, 0, 1, 1), (teams["Vermelho"].GetProperty("wins").GetInt32(), teams["Vermelho"].GetProperty("draws").GetInt32(),
             teams["Vermelho"].GetProperty("losses").GetInt32(), teams["Vermelho"].GetProperty("points").GetInt32()));
-        Assert.Equal(4, teams["Verde"].GetProperty("points").GetInt32()); // 1 vitória + 1 empate
+        Assert.Equal(2, teams["Verde"].GetProperty("points").GetInt32()); // 1 vitória normal + 1 nos pênaltis (Opção A)
         Assert.True(teams["Verde"].GetProperty("isRoundWinner").GetBoolean());
         Assert.False(teams["Vermelho"].GetProperty("isRoundWinner").GetBoolean());
 
@@ -236,7 +236,7 @@ public class RoundResultApiTests : IClassFixture<WebApplicationFactory<Program>>
         var sheet = new
         {
             presence = Array.Empty<object>(),
-            games = new[] { new { homeTeamId = red.Id, awayTeamId = black.Id, homeScore = 1, awayScore = 1 } },
+            games = new[] { new { homeTeamId = red.Id, awayTeamId = black.Id, homeScore = 1, awayScore = 1, penaltyWinnerTeamId = red.Id } },
             goals = new[]
             {
                 new { game = 1, playerProfileId = red.Line[0], ownGoal = false },
@@ -254,7 +254,7 @@ public class RoundResultApiTests : IClassFixture<WebApplicationFactory<Program>>
             Assert.True(s.GetProperty("isLeader").GetBoolean());
         });
         Assert.Equal("2026-11-30", nov.GetProperty("rounds")[0].GetProperty("localDate").GetString());
-        Assert.Equal(2, nov.GetProperty("rounds")[0].GetProperty("winnerColors").GetArrayLength()); // empate divide a rodada
+        Assert.Single(nov.GetProperty("rounds")[0].GetProperty("winnerColors").EnumerateArray()); // Vermelho venceu nos pênaltis
 
         var dec = await Season(r.Player, r.GroupId, 2026, 12);
         Assert.Empty(dec.GetProperty("monthScorers").EnumerateArray());

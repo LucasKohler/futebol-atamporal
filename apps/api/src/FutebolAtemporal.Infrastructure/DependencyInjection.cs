@@ -1,3 +1,5 @@
+using FutebolAtemporal.Application.Payments;
+using FutebolAtemporal.Infrastructure.MercadoPago;
 using FutebolAtemporal.Application.Abstractions;
 using FutebolAtemporal.Domain.Entities;
 using FutebolAtemporal.Domain.Enums;
@@ -76,6 +78,29 @@ public static class DependencyInjection
         services.AddScoped<Application.Results.IResultService, ResultService>();
         services.AddScoped<Application.Results.IStatsService, StatsService>();
         services.AddScoped<Application.Results.IRoundResultService, RoundResultService>();
+
+        services.AddScoped<IPixPaymentService, PixPaymentService>();
+        services.AddSingleton<SimulatedMercadoPagoStore>();
+        services.AddSingleton(sp => MercadoPagoOptions.Resolve(
+            sp.GetRequiredService<IConfiguration>(),
+            sp.GetRequiredService<IHostEnvironment>()));
+
+        services.AddHttpClient<MercadoPagoHttpClient>((sp, client) =>
+        {
+            var opts = sp.GetRequiredService<MercadoPagoOptions>();
+            client.BaseAddress = new Uri(opts.ApiBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+
+        services.AddScoped<SimulatedMercadoPagoClient>();
+        services.AddScoped<IMercadoPagoClient>(sp =>
+        {
+            var opts = sp.GetRequiredService<MercadoPagoOptions>();
+            return opts.ShouldUseSimulator
+                ? sp.GetRequiredService<SimulatedMercadoPagoClient>()
+                : sp.GetRequiredService<MercadoPagoHttpClient>();
+        });
+        services.AddScoped<ISimulatedMercadoPagoControl>(sp => sp.GetRequiredService<SimulatedMercadoPagoClient>());
 
         return services;
     }

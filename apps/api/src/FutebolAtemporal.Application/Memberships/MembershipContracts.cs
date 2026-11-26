@@ -1,3 +1,4 @@
+using FutebolAtemporal.Application.Payments;
 using FutebolAtemporal.Domain.Enums;
 
 namespace FutebolAtemporal.Application.Memberships;
@@ -20,7 +21,10 @@ public sealed record PaymentDto(
     decimal Amount,
     string Status,
     DateTimeOffset? PaidAt,
-    string? Notes);
+    string? Notes,
+    Guid PlayerProfileId = default,
+    string PaymentSource = "None",
+    PixChargeSummaryDto? LatestPix = null);
 
 public sealed record UpsertPaymentRequest(decimal Amount, PaymentStatus Status, string? Notes);
 

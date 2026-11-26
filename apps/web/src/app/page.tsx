@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { PaymentsLink } from "@/components/pix/PaymentsLink";
 import { api, MatchDetail } from "@/lib/api";
 import { playerDisplayName } from "@/lib/playerDisplayName";
 import { matchStatusLabel, registrationStatusLabel, useSession } from "@/lib/useSession";
@@ -94,20 +95,20 @@ export default function HomePage() {
           )}
         </section>
 
+        <PaymentsLink />
+
         {isAdmin ? (
           <section className="rounded-xl border border-outline-variant bg-surface-container-low p-md">
             <h2 className="text-label-md uppercase text-on-surface-variant">Admin</h2>
-            <div className="mt-sm flex flex-wrap gap-2">
-              <Link href="/admin/sorteio" className="rounded-full border border-outline px-3 py-2 text-label-md">
-                Sorteio
-              </Link>
-              <Link href="/admin/registro" className="rounded-full border border-outline px-3 py-2 text-label-md">
-                Pós-jogo
-              </Link>
-              <Link href="/admin/mensalistas" className="rounded-full border border-outline px-3 py-2 text-label-md">
-                Mensalistas
-              </Link>
-            </div>
+            <p className="mt-1 text-body-md text-on-surface-variant">
+              Rodada da semana, sorteio, súmula, elenco e mensalidades ficam na central do admin.
+            </p>
+            <Link
+              href="/admin"
+              className="mt-sm inline-flex min-h-11 items-center rounded-full bg-pitch-green-container px-4 py-2 text-label-md text-on-primary"
+            >
+              Abrir central do admin
+            </Link>
           </section>
         ) : null}
       </div>

@@ -1,4 +1,4 @@
-using FutebolAtemporal.Domain.Exceptions;
+﻿using FutebolAtemporal.Domain.Exceptions;
 using FutebolAtemporal.Domain.Services;
 
 namespace FutebolAtemporal.Domain.Tests;
@@ -121,5 +121,79 @@ public class RoundSheetTests
         Assert.Equal(4, byId[P(3)].Position);
         Assert.DoesNotContain(rows, r => r.PlayerProfileId == P(4));
         Assert.Empty(ScorerTable.Rank([]));
+    }
+
+    [Fact]
+    public void V2_option_a_counts_penalty_wins_breaks_ties_by_regular_wins_and_tracks_penalty_saves()
+    {
+        // Jogo 1: Vermelho 1x1 Preto (Vermelho vence nos pênaltis; P1 defende 2 pênaltis)
+        // Jogo 2: Preto 2x0 Verde (Preto vence no tempo normal)
+        // Ambos ficam com 1 vitória; Preto ganha no desempate de vitórias no tempo normal (1 vs 0).
+        var sheet = new RoundSheet(
+            Lineup(),
+            [
+                new(1, Red, Black, 1, 1, Guid.NewGuid(), Domain.Enums.RoundGameStatus.Finished, Red, [new(P(1), 2)]),
+                new(2, Black, Green, 2, 0, Guid.NewGuid(), Domain.Enums.RoundGameStatus.Finished, null, [new(P(4), 1)])
+            ],
+            [new(1, P(2), false), new(1, P(5), false), new(2, P(5), false), new(2, P(6), false)],
+            BestPlayerId: P(5),
+            BestGoalkeeperId: P(1),
+            Notes: null,
+            RulesVersion: 2);
+
+        RoundRules.Validate(sheet, Teams);
+        var st = RoundRules.Standings(sheet, Teams).ToDictionary(s => s.TeamId);
+
+        Assert.Equal((1, 0, 1, 0, 1), (st[Red].Wins, st[Red].WinsRegular, st[Red].WinsPenalties, st[Red].Draws, st[Red].Points));
+        Assert.Equal((1, 1, 0, 0, 1), (st[Black].Wins, st[Black].WinsRegular, st[Black].WinsPenalties, st[Black].Draws, st[Black].Points));
+        Assert.True(st[Black].IsRoundWinner);
+        Assert.False(st[Red].IsRoundWinner);
+
+        var lines = RoundRules.PlayerLines(sheet, Teams).ToDictionary(l => l.PlayerProfileId);
+        Assert.Equal(1, lines[P(1)].GamesWon);
+        Assert.Equal(1, lines[P(1)].GamesWonOnPenalties);
+        Assert.Equal(2, lines[P(1)].PenaltySaves);
+        Assert.Equal(1, lines[P(4)].PenaltySaves);
+        Assert.Equal(0, lines[P(4)].GamesWonOnPenalties);
+    }
+
+    [Theory]
+    [InlineData("tie-without-winner")]
+    [InlineData("win-with-penalty-winner")]
+    [InlineData("invalid-penalty-winner-team")]
+    [InlineData("save-by-line-player")]
+    [InlineData("save-by-other-team-keeper")]
+    [InlineData("save-count-out-of-range")]
+    public void V2_rejects_invalid_penalty_and_save_rules(string kind)
+    {
+        RoundGame game = kind switch
+        {
+            "tie-without-winner" => new(1, Red, Black, 0, 0, Guid.NewGuid(), Domain.Enums.RoundGameStatus.Finished, null),
+            "win-with-penalty-winner" => new(1, Red, Black, 1, 0, Guid.NewGuid(), Domain.Enums.RoundGameStatus.Finished, Red),
+            "invalid-penalty-winner-team" => new(1, Red, Black, 0, 0, Guid.NewGuid(), Domain.Enums.RoundGameStatus.Finished, Green),
+            "save-by-line-player" => new(1, Red, Black, 0, 0, Guid.NewGuid(), Domain.Enums.RoundGameStatus.Finished, Red, [new(P(2), 1)]),
+            "save-by-other-team-keeper" => new(1, Red, Green, 0, 0, Guid.NewGuid(), Domain.Enums.RoundGameStatus.Finished, Red, [new(P(4), 1)]),
+            _ => new(1, Red, Black, 0, 0, Guid.NewGuid(), Domain.Enums.RoundGameStatus.Finished, Red, [new(P(1), 11)])
+        };
+        IReadOnlyList<RoundGoal> goals = kind == "win-with-penalty-winner" ? [new(1, P(2), false)] : [];
+        var sheet = new RoundSheet(Lineup(), [game], goals, null, null, null, RulesVersion: 2);
+        Assert.Throws<DomainException>(() => RoundRules.Validate(sheet, Teams));
+    }
+
+    [Fact]
+    public void Suggest_next_matchup_applies_winner_stays_rule_for_three_and_two_teams()
+    {
+        var empty = new RoundSheet(Lineup(), [], [], null, null, null, RulesVersion: 2);
+        Assert.Equal((Red, Black), RoundRules.SuggestNextMatchup(empty, Teams));
+
+        var afterPenWin = new RoundSheet(
+            Lineup(),
+            [new(1, Red, Black, 1, 1, Guid.NewGuid(), Domain.Enums.RoundGameStatus.Finished, Black)],
+            [new(1, P(2), false), new(1, P(5), false)],
+            null, null, null, RulesVersion: 2);
+        Assert.Equal((Black, Green), RoundRules.SuggestNextMatchup(afterPenWin, Teams));
+
+        // Com 2 times, repete os 2 times com o vencedor como mandante.
+        Assert.Equal((Black, Red), RoundRules.SuggestNextMatchup(afterPenWin, [Red, Black]));
     }
 }

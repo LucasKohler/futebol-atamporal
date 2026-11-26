@@ -1,4 +1,4 @@
-namespace FutebolAtemporal.Application.Results;
+﻿namespace FutebolAtemporal.Application.Results;
 
 public sealed record CloseMatchRequest(
     int HomeScore,
@@ -30,7 +30,9 @@ public sealed record RankingRowDto(
     int Absences,
     int ManOfTheMatch,
     decimal? AverageRating,
-    decimal WinRate);
+    decimal WinRate,
+    int PenaltySaves = 0,
+    int BestGoalkeeper = 0);
 
 public interface IResultService
 {
