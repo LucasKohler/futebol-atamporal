@@ -7,7 +7,9 @@ import { PaymentsLink } from "@/components/pix/PaymentsLink";
 import { api, SeasonStats } from "@/lib/api";
 import { playerDisplayName } from "@/lib/playerDisplayName";
 import { groupPeriod, monthName, myStats } from "@/lib/season";
-import { useSession } from "@/lib/useSession";
+import { formatBr } from "@/lib/phone";
+import { formatRating } from "@/lib/ratings";
+import { registrationStatusLabel, useSession } from "@/lib/useSession";
 
 type History = Awaited<ReturnType<typeof api.playerHistory>>;
 
@@ -38,13 +40,13 @@ export default function PerfilPage() {
       <h1 className="text-headline-lg">
         {playerDisplayName(user?.registeredName ?? history?.displayName, user?.nickname)}
       </h1>
-      <p className="text-body-md text-on-surface-variant">{user?.phone}</p>
+      <p className="text-body-md text-on-surface-variant">{user?.phone ? formatBr(user.phone) : null}</p>
       {user?.nickname ? (
         <p className="text-label-md text-on-surface-variant">Nome cadastrado: {user.registeredName}</p>
       ) : null}
       {/* A API só envia a nota para administradores. */}
       {history?.skillRating != null ? (
-        <p className="mt-2 text-label-md">Nota de linha: {history.skillRating.toFixed(1)}</p>
+        <p className="mt-2 text-label-md">Nota de linha: {formatRating(history.skillRating)}</p>
       ) : null}
 
       <div className="mt-md">
@@ -58,7 +60,7 @@ export default function PerfilPage() {
         </div>
         <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-md">
           <p className="text-label-sm uppercase text-on-surface-variant">Última nota</p>
-          <p className="mt-1 text-headline-lg text-primary">{history?.history[0]?.rating?.toFixed(1) ?? "—"}</p>
+          <p className="mt-1 text-headline-lg text-primary">{history?.history[0]?.rating != null ? formatRating(history.history[0].rating) : "—"}</p>
         </div>
       </div>
 
@@ -88,8 +90,8 @@ export default function PerfilPage() {
             <li key={h.matchId} className="px-md py-sm">
               <p className="font-semibold">{h.title || "Partida"}</p>
               <p className="text-label-md text-on-surface-variant">
-                {new Date(h.startsAt).toLocaleDateString("pt-BR")} · {h.status}
-                {h.rating != null ? ` · nota ${h.rating}` : ""}
+                {new Date(h.startsAt).toLocaleDateString("pt-BR")} · {registrationStatusLabel(h.status)}
+                {h.rating != null ? ` · nota ${formatRating(h.rating)}` : ""}
                 {h.playedGoalkeeper ? " · no gol" : ""}
                 {h.penaltySaves ? ` · 🧤 ${h.penaltySaves}` : ""}
               </p>

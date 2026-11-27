@@ -47,12 +47,13 @@ export function AdminCard({
 
 export type BadgeTone = "success" | "warning" | "danger" | "neutral" | "info";
 
+/** Tons do StatusBadge = pares de tokens do DS (texto/fundo); borda reforça o tom. */
 const BADGE: Record<BadgeTone, string> = {
-  success: "bg-green-100 text-green-900 border-green-700",
-  warning: "bg-amber-100 text-amber-900 border-amber-700",
-  danger: "bg-error-container text-on-error-container border-error",
-  neutral: "bg-surface-container text-on-surface border-outline-variant",
-  info: "bg-secondary-container text-on-surface border-secondary",
+  success: "bg-success-bg text-success border-success",
+  warning: "bg-warning-bg text-warning-strong border-warning",
+  danger: "bg-danger-bg text-danger border-danger",
+  neutral: "bg-subtle text-fg-secondary border-line-subtle",
+  info: "bg-info-bg text-info border-info",
 };
 
 /** Selo de estado: sempre com texto (a cor não é a única pista). */
@@ -73,7 +74,7 @@ export function AdminKpiStrip({ items, label }: { items: Kpi[]; label: string })
       {items.map((k) => (
         <div
           key={k.label}
-          className={`rounded-lg border px-3 py-2 ${k.tone === "danger" ? "border-error bg-error-container" : k.tone === "warning" ? "border-amber-700 bg-amber-50" : "border-outline-variant bg-surface-container-low"}`}
+          className={`rounded-lg border px-3 py-2 ${k.tone === "danger" ? "border-danger bg-danger-bg" : k.tone === "warning" ? "border-warning bg-warning-subtle" : "border-outline-variant bg-surface-container-low"}`}
         >
           <dt className="text-label-md text-on-surface-variant">{k.label}</dt>
           <dd className="text-headline-md">{k.value}</dd>
@@ -104,7 +105,7 @@ export function AdminEmpty({ children, action }: { children: ReactNode; action?:
 
 export function AdminError({ children, onRetry }: { children: ReactNode; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-error-container p-3 text-on-error-container">
+    <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-danger-bg p-3 text-danger-strong">
       <p className="flex items-center gap-2">
         <AdminIcon name="alert" className="h-5 w-5 shrink-0" />
         {children}
@@ -121,7 +122,7 @@ export function AdminError({ children, onRetry }: { children: ReactNode; onRetry
 /** Aviso de sucesso visível + anúncio para leitor de tela. */
 export function AdminNotice({ children }: { children: ReactNode }) {
   return (
-    <p role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-body-md text-green-900">
+    <p role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg bg-success-bg p-3 text-body-md text-success">
       {children ? <AdminIcon name="check" className="h-5 w-5 shrink-0" /> : null}
       {children}
     </p>

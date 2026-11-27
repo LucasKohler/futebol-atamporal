@@ -1,7 +1,13 @@
 namespace FutebolAtemporal.Application.Auth;
 
-public sealed record RegisterRequest(string Phone, string DisplayName);
-public sealed record LoginRequest(string Phone);
+public sealed record RegisterRequest(string Phone, string DisplayName, string? Password);
+public sealed record LoginRequest(string Phone, string? Password);
+/// <summary>Reset feito pelo admin do grupo: define a nova senha do jogador.</summary>
+public sealed record AdminResetPasswordRequest(string? NewPassword);
+/// <summary>Criação única da senha do primeiro admin, autorizada pelo código de configuração do servidor.</summary>
+public sealed record AdminSetupRequest(string? SetupCode, string Phone, string? Password);
+/// <summary>Recuperação do único admin com código temporário de uso único configurado pelo operador.</summary>
+public sealed record AdminRecoveryRequest(string? RecoveryCode, string Phone, string? NewPassword);
 public sealed record UpdateProfileRequest(string? DisplayName, string? Nickname);
 
 public sealed record UserDto(

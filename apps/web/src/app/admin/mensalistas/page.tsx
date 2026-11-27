@@ -7,6 +7,7 @@ import { AdminConfirmButton } from "@/components/admin/AdminDrawer";
 import { AdminFilterChips, AdminSearch } from "@/components/admin/AdminSearch";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminTabs } from "@/components/admin/AdminTabs";
+import { RowMenu } from "@/components/admin/RowMenu";
 import { inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
 import {
   filterMembers,
@@ -329,8 +330,10 @@ export default function MensalidadesPage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <StatusBadge tone={active ? "success" : "neutral"}>{MEMBER_STATUS_LABEL[m.status] ?? m.status}</StatusBadge>
+                        <RowMenu label={`Mais ações de ${name}`} disabled={busyId === m.id}>
                         {active ? (
                           <AdminConfirmButton
+                            tone="danger"
                             label="Desativar"
                             question={`Desativar ${name}?`}
                             confirmLabel="Desativar"
@@ -356,6 +359,7 @@ export default function MensalidadesPage() {
                             Reativar
                           </button>
                         )}
+                        </RowMenu>
                       </div>
                     </li>
                   );
@@ -403,31 +407,45 @@ function PaymentRow({
         <StatusBadge tone={PAYMENT_TONE[p.status] ?? "neutral"}>{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</StatusBadge>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        {actions.pix ? (
-          <button type="button" data-pix-trigger={`m:${p.id}`} disabled={busy} className={secondaryButton} onClick={onPix}>
-            {actions.sync ? "Ver QR Code Pix" : "Gerar Pix"}
-          </button>
-        ) : null}
-        {actions.sync ? (
-          <button type="button" disabled={busy} className={secondaryButton} onClick={onSync}>
-            Sincronizar com MP
-          </button>
-        ) : null}
         {actions.markPaid ? (
           <button type="button" disabled={busy} className={primaryButton} onClick={() => onSet("Paid", `Pagamento de ${name} registrado.`)}>
             Marcar pago
           </button>
         ) : null}
-        {/* Pago via Pix é definitivo na tela (o dinheiro entrou no Mercado Pago); a API também recusa com 409. */}
-        {actions.revertPending ? (
-          <button type="button" disabled={busy} className={secondaryButton} onClick={() => onSet("Pending", `${name} voltou para pendente.`)}>
-            Voltar a pendente
-          </button>
-        ) : null}
-        {actions.exempt ? (
-          <button type="button" disabled={busy} className={secondaryButton} onClick={() => onSet("Exempt", `${name} isento em ${p.periodLabel}.`)}>
-            Isentar
-          </button>
+        {actions.pix || actions.sync || actions.revertPending || actions.exempt ? (
+          <RowMenu label={`Mais ações da mensalidade de ${name}`} disabled={busy}>
+            {actions.pix ? (
+              <button type="button" data-pix-trigger={`m:${p.id}`} disabled={busy} className={secondaryButton} onClick={onPix}>
+                {actions.sync ? "Ver QR Code Pix" : "Gerar Pix"}
+              </button>
+            ) : null}
+            {actions.sync ? (
+              <button type="button" disabled={busy} className={secondaryButton} onClick={onSync}>
+                Sincronizar com MP
+              </button>
+            ) : null}
+            {/* Pago via Pix é definitivo na tela (o dinheiro entrou no Mercado Pago); a API também recusa com 409. */}
+            {actions.revertPending ? (
+              <AdminConfirmButton
+                tone="danger"
+                label="Voltar a pendente"
+                question={`Voltar ${name} para pendente?`}
+                confirmLabel="Voltar a pendente"
+                disabled={busy}
+                onConfirm={() => onSet("Pending", `${name} voltou para pendente.`)}
+              />
+            ) : null}
+            {actions.exempt ? (
+              <AdminConfirmButton
+                tone="neutral"
+                label="Isentar"
+                question={`Isentar ${name} em ${p.periodLabel}?`}
+                confirmLabel="Isentar"
+                disabled={busy}
+                onConfirm={() => onSet("Exempt", `${name} isento em ${p.periodLabel}.`)}
+              />
+            ) : null}
+          </RowMenu>
         ) : null}
       </div>
     </li>

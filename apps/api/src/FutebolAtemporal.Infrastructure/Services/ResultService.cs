@@ -78,6 +78,13 @@ public sealed class ResultService : IResultService
             });
         }
 
+        // Diárias nascem no fechamento do dia pelo admin (também no fluxo legado A/B).
+        var present = request.Presence.Where(p => p.Present).Select(p => p.PlayerProfileId).ToList();
+        var presentRegistered = await _db.MatchRegistrations.AsNoTracking()
+            .Where(r => r.MatchId == matchId && present.Contains(r.PlayerProfileId))
+            .Select(r => r.PlayerProfileId).ToListAsync(ct);
+        await MatchDayFeeLifecycle.LaunchOnCloseAsync(_db, match, presentRegistered, userId, DateTimeOffset.UtcNow, ct);
+
         match.Status = MatchStatus.Completed;
         match.UpdatedAt = DateTimeOffset.UtcNow;
         match.Version++;

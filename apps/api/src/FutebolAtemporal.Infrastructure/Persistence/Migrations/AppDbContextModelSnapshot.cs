@@ -188,6 +188,9 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTimeOffset?>("DueAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("GroupId")
                         .HasColumnType("TEXT");
 

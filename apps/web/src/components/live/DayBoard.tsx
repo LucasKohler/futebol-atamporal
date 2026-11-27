@@ -25,37 +25,42 @@ export function DayStandings({ day, caption = "Classificação do dia" }: { day:
   const rows = sortedStandings(day);
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[20rem] text-left text-body-md [&_td]:px-2 [&_td]:text-center [&_td]:tabular-nums [&_thead_th]:px-2 [&_thead_th:not(:first-child)]:text-center">
-        <caption className="mb-1 text-left text-label-md text-on-surface-variant">{caption}: vitória no tempo normal ou nos pênaltis vale 1.</caption>
-        <thead className="text-label-md text-on-surface-variant">
+      {/* Cabe em 327 px (celular): colunas curtas com abreviação explicada e troféu junto do nome. */}
+      <table className="w-full table-fixed text-left text-body-md [&_td]:px-1 [&_td]:text-center [&_td]:tabular-nums [&_thead_th]:px-1 [&_thead_th:not(:first-child)]:text-center">
+        <caption className="mb-1 text-left text-label-md text-fg-secondary">{caption}: vitória no tempo normal ou nos pênaltis vale 1.</caption>
+        <colgroup>
+          <col className="w-[34%]" />
+          <col span={6} />
+        </colgroup>
+        <thead className="text-label-md text-fg-secondary">
           <tr>
             <th scope="col" className="py-1">Cor</th>
-            <th scope="col">J</th>
-            <th scope="col">V</th>
-            <th scope="col">
-              <abbr title="Vitórias nos pênaltis">V pên.</abbr>
-            </th>
-            <th scope="col">D</th>
-            <th scope="col">Saldo</th>
-            <th scope="col">Gols</th>
+            <th scope="col"><abbr title="Jogos">J</abbr></th>
+            <th scope="col"><abbr title="Vitórias">V</abbr></th>
+            <th scope="col"><abbr title="Vitórias nos pênaltis">VP</abbr></th>
+            <th scope="col"><abbr title="Derrotas">D</abbr></th>
+            <th scope="col"><abbr title="Saldo de gols">SG</abbr></th>
+            <th scope="col"><abbr title="Gols marcados">G</abbr></th>
           </tr>
         </thead>
         <tbody>
           {rows.map((s) => (
-            <tr key={s.teamId} className={`border-t border-outline-variant ${s.isDayLeader ? "font-semibold" : ""}`}>
-              <th scope="row" className="py-2">
+            <tr key={s.teamId} className={`border-t border-line-subtle ${s.isDayLeader ? "font-semibold" : ""}`}>
+              <th scope="row" className="whitespace-nowrap py-2">
                 <Swatch day={day} teamId={s.teamId} />
                 {colorOf(s.teamId)}
-                {s.isDayLeader && s.played > 0 ? " 🏆" : ""}
+                {s.isDayLeader && s.played > 0 ? (
+                  <span role="img" aria-label="líder do dia" className="ml-1">
+                    🏆
+                  </span>
+                ) : null}
               </th>
               <td>{s.played}</td>
               <td>{s.wins}</td>
               <td>{s.winsPenalties}</td>
               <td>{s.losses}</td>
               <td>{s.goalsFor - s.goalsAgainst}</td>
-              <td>
-                {s.goalsFor}:{s.goalsAgainst}
-              </td>
+              <td>{s.goalsFor}</td>
             </tr>
           ))}
         </tbody>

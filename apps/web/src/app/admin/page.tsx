@@ -5,7 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 import { AdminCard, AdminError, AdminKpiStrip, AdminLoading, AdminNotice, type Kpi } from "@/components/admin/AdminCard";
 import { AdminIcon } from "@/components/admin/AdminIcon";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { MatchControls } from "@/components/admin/MatchControls";
 import { RoundStepper } from "@/components/admin/RoundStepper";
+import { WhatsAppSummary } from "@/components/WhatsAppSummary";
 import { focusRing } from "@/components/admin/ui";
 import { formatMoney, summarizePayments } from "@/lib/adminFilters";
 import { ADMIN_MODULES, groupAdminModules } from "@/lib/adminModules";
@@ -13,6 +15,7 @@ import { AdminPixOverview, api, Draw, GroupPlayer, MatchDetail, Payment } from "
 import { GATEWAY_MODE_LABEL } from "@/lib/pix";
 import { deriveRoundStep } from "@/lib/roundStep";
 import { groupPeriod, monthName } from "@/lib/season";
+import { buildTeamsSummary } from "@/lib/teams";
 import { matchStatusLabel, useSession } from "@/lib/useSession";
 
 type HubData = {
@@ -59,15 +62,20 @@ export default function AdminHubPage() {
     load().catch((e) => setError(e instanceof Error ? e.message : "Não foi possível carregar a central."));
   }, [group, isAdmin, load]);
 
-  async function transition(to: string) {
+  async function transition(to: string, success?: string) {
     if (!data?.match) return;
+    const id = data.match.match.id;
+    await runMatch(() => api.transitionMatch(id, to), success ?? TRANSITION_NOTICE[to] ?? "Partida atualizada.");
+  }
+
+  async function runMatch(action: () => Promise<unknown>, success: string) {
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      await api.transitionMatch(data.match.match.id, to);
+      await action();
       await load();
-      setNotice(TRANSITION_NOTICE[to] ?? "Partida atualizada.");
+      setNotice(success);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao atualizar a partida.");
       await load().catch(() => undefined);
@@ -109,7 +117,25 @@ export default function AdminHubPage() {
                 </p>
               ) : null}
             </div>
-            {step ? <RoundStepper state={step} onTransition={transition} busy={busy} /> : null}
+            {step ? <RoundStepper state={step} onTransition={(to) => transition(to)} busy={busy} /> : null}
+            {data.match ? (
+              <MatchControls
+                match={data.match.match}
+                busy={busy}
+                onTransition={(to, success) => transition(to, success)}
+                onUpdate={(body) => {
+                  const id = data.match!.match.id;
+                  return runMatch(() => api.updateMatch(id, body), "Dados da partida salvos.");
+                }}
+              />
+            ) : null}
+            {data.match ? (
+              <WhatsAppSummary
+                detail={data.match}
+                teams={data.draw && data.draw.status === "Confirmed" && !data.draw.rosterChanged ? buildTeamsSummary(data.draw) : null}
+                timeZone={group?.timeZoneId ?? "America/Sao_Paulo"}
+              />
+            ) : null}
           </section>
 
           <section aria-labelledby="kpis-titulo" className="flex flex-col gap-sm">

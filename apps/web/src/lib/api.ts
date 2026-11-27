@@ -134,7 +134,7 @@ export type PixCharge = {
   qrCodeBase64: string | null;
   expiresAt: string;
   status: string;
-  /** "Pending" | "Paid" | "Overdue" | "Exempt" | "Cancelled" */
+  /** "Pending" | "Paid" | "Overdue" | "Exempt" | "Cancelled" | "RefundPending" | "Refunded" | "NotCharged" (diária: rodada ainda não fechada) */
   obligationStatus: string;
   isSimulated: boolean;
   reused: boolean;
@@ -178,6 +178,11 @@ export type MyMatchDayPayment = {
   paymentSource: PaymentSource;
   paidAt: string | null;
   activePix: PixCharge | null;
+  /**
+   * Vencimento (meia-noite seguinte ao fechamento da rodada, fuso do grupo). Null = cobrança ainda
+   * não lançada no fechamento (ou diária anterior ao contrato de 2026-11-27). Aditivo; ausente em APIs antigas.
+   */
+  dueAt?: string | null;
 };
 
 export type MyPayments = {
@@ -202,6 +207,8 @@ export type AdminMatchFee = {
   paidAt: string | null;
   notes: string | null;
   latestPix: PixChargeSummary | null;
+  /** Vencimento da diária lançada no fechamento (aditivo, contrato 2026-11-27). */
+  dueAt?: string | null;
 };
 
 export type PixAdminKpis = {
@@ -560,21 +567,55 @@ function send<T>(method: string, path: string, body?: unknown) {
 }
 
 export const api = {
-  login(phone: string) {
+  /** Telefone + senha (contrato backend 2026-11-27). Erro genérico: não revela se o celular existe. */
+  login(phone: string, password: string) {
     return fetch(url("/api/auth/login"), {
       method: "POST",
       headers: jsonHeaders,
       credentials: "include",
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ phone, password }),
     }).then((r) => parseJson<User>(r));
   },
-  register(phone: string, displayName: string) {
+  register(phone: string, displayName: string, password: string) {
     return fetch(url("/api/auth/register"), {
       method: "POST",
       headers: jsonHeaders,
       credentials: "include",
-      body: JSON.stringify({ phone, displayName }),
+      body: JSON.stringify({ phone, displayName, password }),
     }).then((r) => parseJson<User>(r));
+  },
+  /**
+   * Configuração inicial do primeiro admin (uso único): código guardado só no servidor + celular do admin + senha.
+   * 200 abre a sessão; depois disso o código deixa de valer (409 setup_already_done).
+   */
+  adminSetup(setupCode: string, phone: string, password: string) {
+    return fetch(url("/api/auth/admin-setup"), {
+      method: "POST",
+      headers: jsonHeaders,
+      credentials: "include",
+      body: JSON.stringify({ setupCode, phone, password }),
+    }).then((r) => parseJson<User>(r));
+  },
+  /**
+   * Recuperação do único admin (decisão do Lucas): código temporário de uso único definido pelo operador no servidor,
+   * válido por no máximo 10 minutos. 200 abre a sessão e encerra as sessões antigas do admin.
+   */
+  adminRecovery(recoveryCode: string, phone: string, newPassword: string) {
+    return fetch(url("/api/auth/admin-recovery"), {
+      method: "POST",
+      headers: jsonHeaders,
+      credentials: "include",
+      body: JSON.stringify({ recoveryCode, phone, newPassword }),
+    }).then((r) => parseJson<User>(r));
+  },
+  /** Recuperação de senha: o admin do grupo define a nova senha do jogador (204, sem corpo). */
+  resetPlayerPassword(groupId: string, playerProfileId: string, newPassword: string) {
+    return fetch(url(`/api/groups/${groupId}/players/${playerProfileId}/password`), {
+      method: "PUT",
+      headers: jsonHeaders,
+      credentials: "include",
+      body: JSON.stringify({ newPassword }),
+    }).then((r) => parseJson<void>(r));
   },
   logout() {
     return fetch(url("/api/auth/logout"), { method: "POST", credentials: "include" }).then((r) =>

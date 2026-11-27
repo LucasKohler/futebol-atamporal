@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminCard, AdminEmpty, AdminError, AdminKpiStrip, AdminLoading, AdminNotice, StatusBadge, type BadgeTone } from "@/components/admin/AdminCard";
+import { AdminConfirmButton } from "@/components/admin/AdminDrawer";
+import { AdminIcon } from "@/components/admin/AdminIcon";
+import { RowMenu } from "@/components/admin/RowMenu";
 import { AdminFilterChips } from "@/components/admin/AdminSearch";
 import { inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
 import { PixCheckout } from "@/components/pix/PixCheckout";
@@ -9,9 +12,17 @@ import { formatMoney, PAYMENT_STATUS_LABEL } from "@/lib/adminFilters";
 import { api, AdminMatchFee, AdminPixOverview, GatewayStatus, MatchSummary, PixCharge } from "@/lib/api";
 import { playerDisplayName } from "@/lib/playerDisplayName";
 import { usePixFocusReturn } from "@/components/pix/usePixFocusReturn";
-import { GATEWAY_MODE_LABEL, isActivePix, obligationActions, PAYMENT_SOURCE_LABEL, PIX_STATUS_LABEL, pixSummaryText } from "@/lib/pix";
+import { dueAtText, GATEWAY_MODE_LABEL, isActivePix, obligationActions, PAYMENT_SOURCE_LABEL, PIX_STATUS_LABEL, pixSummaryText } from "@/lib/pix";
 
-const OBLIGATION_TONE: Record<string, BadgeTone> = { Paid: "success", Pending: "warning", Overdue: "danger", Exempt: "info", Cancelled: "neutral" };
+const OBLIGATION_TONE: Record<string, BadgeTone> = {
+  Paid: "success",
+  Pending: "warning",
+  Overdue: "danger",
+  Exempt: "info",
+  Cancelled: "neutral",
+  RefundPending: "warning",
+  Refunded: "neutral",
+};
 const PIX_TONE: Record<string, BadgeTone> = { Approved: "success", Pending: "warning", Expired: "neutral", Cancelled: "neutral" };
 
 export function GatewayBadge({ gateway }: { gateway: GatewayStatus | null }) {
@@ -87,8 +98,24 @@ export function GatewaySettingsCard({ groupId, gateway, onSaved }: { groupId: st
         <AdminLoading label="Carregando configuração…" />
       ) : (
         <div className="flex flex-col gap-md">
+          {!gateway.webhookSecretConfigured ? (
+            gateway.isSimulated ? (
+              <p role="status" className="rounded-lg border border-warning bg-warning-subtle p-3 text-body-md text-warning-strong">
+                <strong>Webhook sem segredo.</strong> No simulador isso não bloqueia testes, mas em produção nenhum Pix será confirmado
+                automaticamente sem o segredo.
+              </p>
+            ) : (
+              <div role="alert" className="flex items-start gap-2 rounded-lg border border-danger bg-danger-bg p-3 text-body-md text-danger-strong">
+                <AdminIcon name="alert" className="mt-0.5 h-5 w-5 shrink-0" />
+                <p>
+                  <strong>Segredo do webhook não configurado.</strong> Os Pix pagos não serão confirmados automaticamente: a API recusa
+                  avisos do Mercado Pago sem assinatura válida. Configure o segredo no servidor antes de cobrar.
+                </p>
+              </div>
+            )
+          ) : null}
           <ul className="text-body-md text-on-surface-variant">
-            <li>Webhook: {gateway.webhookSecretConfigured ? "assinatura configurada" : "segredo do webhook não configurado"}</li>
+            <li>Webhook: {gateway.webhookSecretConfigured ? "assinatura configurada" : "sem segredo (veja o alerta acima)"}</li>
             <li>
               Endereço do webhook: <code className="break-all">{gateway.webhookPath}</code>
             </li>
@@ -107,7 +134,16 @@ export function GatewaySettingsCard({ groupId, gateway, onSaved }: { groupId: st
             </label>
             <label className="flex flex-col gap-1 text-label-md">
               Diária avulsa (R$)
-              <input inputMode="decimal" className={inputClass} value={daily} onChange={(e) => setDaily(e.target.value)} />
+              <input
+                inputMode="decimal"
+                aria-describedby="diaria-ajuda"
+                className={inputClass}
+                value={daily}
+                onChange={(e) => setDaily(e.target.value)}
+              />
+              <span id="diaria-ajuda" className="font-normal text-fg-secondary">
+                Lançada ao fechar a rodada; diárias já lançadas mantêm o valor da época.
+              </span>
             </label>
             <label className="flex flex-col gap-1 text-label-md">
               Validade do Pix (minutos)
@@ -258,7 +294,11 @@ export function MatchFeesPanel({ groupId, timeZone }: { groupId: string; timeZon
           <ul className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
             {(fees ?? []).map((f) => {
               const name = playerDisplayName(f.playerName);
-              const actions = obligationActions(f.status, f.paymentSource, f.latestPix, Date.now());
+              // Sem dueAt = diária ainda não lançada no fechamento: sem Pix, baixa ou isenção antes de fechar a rodada.
+              const notLaunched = f.status === "NotCharged" || (f.status === "Pending" && !f.dueAt);
+              const actions = notLaunched
+                ? { pix: false, sync: false, markPaid: false, revertPending: false, exempt: false, confirmRefund: false }
+                : obligationActions(f.status, f.paymentSource, f.latestPix, Date.now());
               const busy = busyId === f.playerProfileId;
               return (
                 <li
@@ -274,62 +314,96 @@ export function MatchFeesPanel({ groupId, timeZone }: { groupId: string; timeZon
                         {formatMoney(f.amount)} · {pixSummaryText(f.latestPix, f.paymentSource, Date.now(), timeZone)}
                       </p>
                     </div>
-                    <StatusBadge tone={OBLIGATION_TONE[f.status] ?? "neutral"}>{PAYMENT_STATUS_LABEL[f.status] ?? f.status}</StatusBadge>
+                    <StatusBadge tone={notLaunched ? "neutral" : (OBLIGATION_TONE[f.status] ?? "neutral")}>
+                      {notLaunched ? "Sem cobrança ainda" : (PAYMENT_STATUS_LABEL[f.status] ?? f.status)}
+                    </StatusBadge>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {actions.pix ? (
-                      <button
-                        type="button"
-                        data-pix-trigger={`d:${f.playerProfileId}`}
+                  {f.dueAt && (f.status === "Pending" || f.status === "Overdue") ? (
+                    <p className={`text-label-md ${f.status === "Overdue" ? "text-danger" : "text-fg-secondary"}`}>
+                      {f.status === "Overdue" ? `Venceu ${dueAtText(f.dueAt, timeZone).replace("até", "às")}` : `Pagamento ${dueAtText(f.dueAt, timeZone)}`}
+                    </p>
+                  ) : null}
+                  {notLaunched ? <p className="text-label-md text-fg-secondary">A diária é lançada quando você fechar a rodada.</p> : null}
+                  {f.status === "RefundPending" ? (
+                    <p className="text-label-md text-warning-strong">
+                      Presença corrigida para ausente com a diária já paga. Devolva o valor fora do app e confirme aqui.
+                    </p>
+                  ) : null}
+                  {/* ListRow: no máximo uma ação visível (a que o status pede); o resto no menu "⋯". */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {actions.confirmRefund ? (
+                      <AdminConfirmButton
+                        tone="neutral"
+                        label="Confirmar devolução"
+                        question={`Você já devolveu ${formatMoney(f.amount)} para ${name}?`}
+                        confirmLabel="Sim, devolvi"
                         disabled={busy}
-                        className={secondaryButton}
-                        onClick={() => {
-                          remember();
-                          openPix(f);
-                        }}
-                      >
-                        {actions.sync ? "Ver QR Code Pix" : "Gerar Pix"}
-                      </button>
-                    ) : null}
-                    {actions.sync && f.latestPix ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className={secondaryButton}
-                        onClick={() => act(f.playerProfileId, () => api.verifyPix(f.latestPix!.id), `Pix de ${name} sincronizado com o Mercado Pago.`)}
-                      >
-                        Sincronizar com MP
-                      </button>
-                    ) : null}
-                    {actions.markPaid ? (
+                        className={primaryButton}
+                        onConfirm={() =>
+                          act(
+                            f.playerProfileId,
+                            () => api.updateMatchFee(groupId, f.matchId, f.playerProfileId, { amount: f.amount, status: "Refunded" }),
+                            `Devolução da diária de ${name} confirmada.`,
+                          )
+                        }
+                      />
+                    ) : actions.markPaid ? (
                       <button
                         type="button"
                         disabled={busy}
                         className={primaryButton}
                         onClick={() => act(f.playerProfileId, () => api.updateMatchFee(groupId, f.matchId, f.playerProfileId, { amount: f.amount, status: "Paid" }), `Baixa manual da diária de ${name}.`)}
                       >
-                        Baixa manual
+                        Marcar pago
                       </button>
                     ) : null}
-                    {actions.exempt ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className={secondaryButton}
-                        onClick={() => act(f.playerProfileId, () => api.updateMatchFee(groupId, f.matchId, f.playerProfileId, { amount: f.amount, status: "Exempt" }), `${name} isento da diária.`)}
-                      >
-                        Isentar
-                      </button>
-                    ) : null}
-                    {actions.revertPending ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className={secondaryButton}
-                        onClick={() => act(f.playerProfileId, () => api.updateMatchFee(groupId, f.matchId, f.playerProfileId, { amount: f.amount, status: "Pending" }), `Diária de ${name} voltou a pendente.`)}
-                      >
-                        {f.status === "Exempt" ? "Desfazer isenção" : "Desfazer baixa"}
-                      </button>
+                    {actions.pix || actions.sync || actions.exempt || actions.revertPending ? (
+                      <RowMenu label={`Mais ações da diária de ${name}`} disabled={busy}>
+                        {actions.pix ? (
+                          <button
+                            type="button"
+                            data-pix-trigger={`d:${f.playerProfileId}`}
+                            disabled={busy}
+                            className={secondaryButton}
+                            onClick={() => {
+                              remember();
+                              openPix(f);
+                            }}
+                          >
+                            {actions.sync ? "Ver QR Code Pix" : "Gerar Pix"}
+                          </button>
+                        ) : null}
+                        {actions.sync && f.latestPix ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            className={secondaryButton}
+                            onClick={() => act(f.playerProfileId, () => api.verifyPix(f.latestPix!.id), `Pix de ${name} sincronizado com o Mercado Pago.`)}
+                          >
+                            Sincronizar com MP
+                          </button>
+                        ) : null}
+                        {actions.exempt ? (
+                          <AdminConfirmButton
+                            tone="neutral"
+                            label="Isentar"
+                            question={`Isentar ${name} desta diária?`}
+                            confirmLabel="Isentar"
+                            disabled={busy}
+                            onConfirm={() => act(f.playerProfileId, () => api.updateMatchFee(groupId, f.matchId, f.playerProfileId, { amount: f.amount, status: "Exempt" }), `${name} isento da diária.`)}
+                          />
+                        ) : null}
+                        {actions.revertPending ? (
+                          <AdminConfirmButton
+                            tone="danger"
+                            label={f.status === "Exempt" ? "Desfazer isenção" : "Desfazer baixa"}
+                            question={`Voltar a diária de ${name} para pendente?`}
+                            confirmLabel="Voltar a pendente"
+                            disabled={busy}
+                            onConfirm={() => act(f.playerProfileId, () => api.updateMatchFee(groupId, f.matchId, f.playerProfileId, { amount: f.amount, status: "Pending" }), `Diária de ${name} voltou a pendente.`)}
+                          />
+                        ) : null}
+                      </RowMenu>
                     ) : null}
                   </div>
                 </li>

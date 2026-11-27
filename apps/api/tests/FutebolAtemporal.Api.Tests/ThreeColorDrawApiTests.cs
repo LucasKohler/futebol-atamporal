@@ -29,7 +29,7 @@ public class ThreeColorDrawApiTests : IClassFixture<WebApplicationFactory<Progra
     private async Task<Scenario> ScenarioAsync(string prefix)
     {
         var admin = NewClient();
-        var login = await admin.PostAsJsonAsync("/api/auth/login", new { phone = AdminPhone });
+        var login = await TestAuth.LoginAsync(admin, AdminPhone);
         var groupId = (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
         var create = await admin.PostAsJsonAsync("/api/matches", new
         {
@@ -43,7 +43,7 @@ public class ThreeColorDrawApiTests : IClassFixture<WebApplicationFactory<Progra
         for (var i = 0; i < names.Length; i++)
         {
             var c = NewClient();
-            var reg = await c.PostAsJsonAsync("/api/auth/register", new { phone = $"1198{prefix}{i:D5}", displayName = names[i] });
+            var reg = await c.PostAsJsonAsync("/api/auth/register", new { phone = $"1198{prefix}{i:D5}", displayName = names[i], password = TestAuth.Password });
             Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
             var id = (await reg.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("playerProfileId").GetGuid();
             Assert.Equal(HttpStatusCode.OK, (await c.PostAsync($"/api/matches/{matchId}/join", null)).StatusCode);

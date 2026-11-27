@@ -23,7 +23,7 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
     public async Task Join_fills_spots_then_waitlist_and_promote_on_leave()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        await TestAuth.LoginAsync(client, "11999999999");
 
         var meRes = await client.GetAsync("/api/auth/me");
         var me = await meRes.Content.ReadFromJsonAsync<JsonElement>();
@@ -50,8 +50,7 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         var reg = await client.PostAsJsonAsync("/api/auth/register", new
         {
             phone = "11988880002",
-            displayName = "Jogador Dois"
-        });
+            displayName = "Jogador Dois", password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
 
         var join2 = await client.PostAsync($"/api/matches/{matchId}/join", null);
@@ -63,8 +62,7 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         var reg3 = await client.PostAsJsonAsync("/api/auth/register", new
         {
             phone = "11988880003",
-            displayName = "Jogador Tres"
-        });
+            displayName = "Jogador Tres", password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, reg3.StatusCode);
         var join3 = await client.PostAsync($"/api/matches/{matchId}/join", null);
         Assert.Equal(HttpStatusCode.OK, join3.StatusCode);
@@ -72,7 +70,7 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal("Waitlisted", d3.GetProperty("myStatus").GetString());
         Assert.Equal(1, d3.GetProperty("myWaitlistPosition").GetInt32());
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        await TestAuth.LoginAsync(client, "11999999999");
         var detail = await (await client.GetAsync($"/api/matches/{matchId}")).Content.ReadFromJsonAsync<JsonElement>();
         var confirmed = detail.GetProperty("confirmed").EnumerateArray().ToList();
         Assert.Equal(2, confirmed.Count);
@@ -96,13 +94,12 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         var player = await client.PostAsJsonAsync("/api/auth/register", new
         {
             phone = "11988880009",
-            displayName = "Carlos Eduardo"
-        });
+            displayName = "Carlos Eduardo", password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, player.StatusCode);
         var playerMe = await player.Content.ReadFromJsonAsync<JsonElement>();
         var profileId = playerMe.GetProperty("playerProfileId").GetGuid();
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        await TestAuth.LoginAsync(client, "11999999999");
         var me = await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>();
         var groupId = me.GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
 
@@ -120,7 +117,7 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         });
         var matchId = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11988880009" });
+        await TestAuth.LoginAsync(client, "11988880009");
         var joined = await client.PostAsync($"/api/matches/{matchId}/join", null);
         var detail = await joined.Content.ReadFromJsonAsync<JsonElement>();
         var names = detail.GetProperty("confirmed").EnumerateArray().Select(c => c.GetProperty("displayName").GetString()).ToList();
@@ -132,7 +129,7 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
     public async Task Close_match_then_rankings_only_include_completed()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        await TestAuth.LoginAsync(client, "11999999999");
         var me = await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>();
         var groupId = me.GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
         var adminProfile = me.GetProperty("playerProfileId").GetGuid();
@@ -149,15 +146,15 @@ public class MatchRegistrationFlowTests : IClassFixture<WebApplicationFactory<Pr
         var matchId = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         await client.PostAsync($"/api/matches/{matchId}/join", null);
 
-        await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988880021", displayName = "Jogador Fechamento" });
+        await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988880021", displayName = "Jogador Fechamento", password = TestAuth.Password });
         await client.PostAsync($"/api/matches/{matchId}/join", null);
         var playerMe = await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>();
         var playerProfile = playerMe.GetProperty("playerProfileId").GetGuid();
         // Sorteio de três cores exige ao menos 3 confirmados.
-        await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988880022", displayName = "Terceiro Fechamento" });
+        await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988880022", displayName = "Terceiro Fechamento", password = TestAuth.Password });
         await client.PostAsync($"/api/matches/{matchId}/join", null);
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        await TestAuth.LoginAsync(client, "11999999999");
         var closeList = await client.PostAsJsonAsync($"/api/matches/{matchId}/transition", new { status = "RegistrationClosed" });
         Assert.Equal(HttpStatusCode.OK, closeList.StatusCode);
         var drawRes = await client.PostAsJsonAsync($"/api/matches/{matchId}/draw", new { seed = "close-test" });

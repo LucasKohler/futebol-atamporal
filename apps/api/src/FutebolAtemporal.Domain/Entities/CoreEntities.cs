@@ -238,6 +238,8 @@ public class MatchFeePayment
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
     public PaymentSource PaymentSource { get; set; } = PaymentSource.None;
     public DateTimeOffset? PaidAt { get; set; }
+    /// <summary>Fim do dia (fuso do grupo) do fechamento da rodada. Nulo = ainda não lançada no fechamento.</summary>
+    public DateTimeOffset? DueAt { get; set; }
     public Guid? RecordedByUserId { get; set; }
     public string? Notes { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

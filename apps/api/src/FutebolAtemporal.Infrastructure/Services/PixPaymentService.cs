@@ -108,8 +108,9 @@ public sealed class PixPaymentService : IPixPaymentService
                 x.f.Id, x.match.Id,
                 string.IsNullOrWhiteSpace(x.match.Title) ? $"Pelada {x.match.StartsAt:dd/MM}" : x.match.Title!,
                 x.match.StartsAt, x.match.Location, x.f.Amount,
-                x.f.Status.ToString(), x.f.PaymentSource.ToString(), x.f.PaidAt,
-                charge is null ? null : MapChargeDto(charge, playerName, x.f.Status.ToString(), true, true, now)));
+                MatchDayFeePolicy.EffectiveStatus(x.f.Status, x.f.DueAt, now).ToString(), x.f.PaymentSource.ToString(), x.f.PaidAt,
+                charge is null ? null : MapChargeDto(charge, playerName, x.f.Status.ToString(), true, true, now),
+                x.f.DueAt));
         }
 
         foreach (var m in eligibleMatches.Where(m => !feeMatchIds.Contains(m.Id)))
@@ -118,7 +119,8 @@ public sealed class PixPaymentService : IPixPaymentService
                 null, m.Id,
                 string.IsNullOrWhiteSpace(m.Title) ? $"Pelada {m.StartsAt:dd/MM}" : m.Title!,
                 m.StartsAt, m.Location, settings.DefaultMatchDayFee,
-                PaymentStatus.Pending.ToString(), PaymentSource.None.ToString(), null, null));
+                m.Status == MatchStatus.Completed ? PaymentStatus.Pending.ToString() : MatchDayFeePolicy.NotChargedStatus,
+                PaymentSource.None.ToString(), null, null));
         }
 
         matchDayDtos = matchDayDtos.OrderByDescending(x => x.StartsAt).ToList();
@@ -223,6 +225,7 @@ public sealed class PixPaymentService : IPixPaymentService
             ?? throw new DomainException("Partida não encontrada.");
         if (match.Status == MatchStatus.Cancelled)
             throw new DomainException("Não é possível gerar diária para uma partida cancelada.");
+        MatchDayFeePolicy.EnsureChargeOpen(match.Status);
 
         var (actorMembership, actorProfile) = await AccessHelper.RequireMemberAsync(_db, userId, match.GroupId, ct);
         var isAdmin = actorMembership.Role == GroupRole.Admin;
@@ -277,6 +280,8 @@ public sealed class PixPaymentService : IPixPaymentService
 
         if (fee.Status == PaymentStatus.Paid)
             throw new ConflictException("Esta diária já está paga.");
+        if (fee.Status is PaymentStatus.RefundPending or PaymentStatus.Refunded)
+            throw new ConflictException("Esta diária foi paga e está em devolução por correção de presença.");
         if (fee.Status is PaymentStatus.Exempt or PaymentStatus.Cancelled)
             throw new DomainException("Esta diária está isenta ou cancelada e não aceita pagamento via Pix.");
 
@@ -503,7 +508,7 @@ public sealed class PixPaymentService : IPixPaymentService
     public async Task<IReadOnlyList<AdminMatchFeeDto>> ListMatchFeesAsync(Guid userId, Guid groupId, Guid matchId, CancellationToken ct = default)
     {
         await AccessHelper.RequireMemberAsync(_db, userId, groupId, ct, adminOnly: true);
-        _ = await _db.Matches.AsNoTracking().FirstOrDefaultAsync(m => m.Id == matchId && m.GroupId == groupId, ct)
+        var listMatch = await _db.Matches.AsNoTracking().FirstOrDefaultAsync(m => m.Id == matchId && m.GroupId == groupId, ct)
             ?? throw new DomainException("Partida não encontrada neste grupo.");
         var group = await _db.FootballGroups.AsNoTracking().FirstAsync(g => g.Id == groupId, ct);
         var settings = GroupSettings.Parse(group.SettingsJson);
@@ -552,10 +557,12 @@ public sealed class PixPaymentService : IPixPaymentService
                 return new AdminMatchFeeDto(
                     f?.Id, matchId, pid, names.GetValueOrDefault(pid, "Jogador"), priority,
                     f?.Amount ?? settings.DefaultMatchDayFee,
-                    (f?.Status ?? PaymentStatus.Pending).ToString(),
+                    f is not null ? MatchDayFeePolicy.EffectiveStatus(f.Status, f.DueAt, now).ToString()
+                        : listMatch.Status == MatchStatus.Completed ? PaymentStatus.Pending.ToString() : MatchDayFeePolicy.NotChargedStatus,
                     (f?.PaymentSource ?? PaymentSource.None).ToString(),
                     f?.PaidAt, f?.Notes,
-                    f is null ? null : latestPixByFee.GetValueOrDefault(f.Id));
+                    f is null ? null : latestPixByFee.GetValueOrDefault(f.Id),
+                    f?.DueAt);
             })
             .OrderBy(x => x.PlayerName, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
@@ -564,8 +571,9 @@ public sealed class PixPaymentService : IPixPaymentService
     public async Task<AdminMatchFeeDto> UpsertMatchFeeAsync(Guid userId, Guid groupId, Guid matchId, Guid playerProfileId, UpsertMatchFeeRequest request, CancellationToken ct = default)
     {
         await AccessHelper.RequireMemberAsync(_db, userId, groupId, ct, adminOnly: true);
-        _ = await _db.Matches.AsNoTracking().FirstOrDefaultAsync(m => m.Id == matchId && m.GroupId == groupId, ct)
+        var feeMatch = await _db.Matches.AsNoTracking().FirstOrDefaultAsync(m => m.Id == matchId && m.GroupId == groupId, ct)
             ?? throw new DomainException("Partida não encontrada neste grupo.");
+        MatchDayFeePolicy.EnsureChargeOpen(feeMatch.Status);
         if (!Enum.IsDefined(request.Status))
             throw new DomainException("Situação da diária inválida.");
         if (request.Amount < 0)
@@ -582,6 +590,32 @@ public sealed class PixPaymentService : IPixPaymentService
         var fee = await _db.MatchFeePayments.FirstOrDefaultAsync(f => f.MatchId == matchId && f.PlayerProfileId == playerProfileId, ct);
         if (fee is not null && fee.Status == PaymentStatus.Paid && fee.PaymentSource == PaymentSource.Pix)
             throw new ConflictException("Esta diária já foi quitada via Pix e não pode ser alterada manualmente.");
+        if (!MatchDayFeePolicy.IsAllowedManualTransition(fee?.Status ?? PaymentStatus.Pending, request.Status))
+            throw new ConflictException("Devolução só pode ser confirmada para diária paga cuja presença foi corrigida para ausente.");
+
+        if (fee is not null && fee.Status == PaymentStatus.RefundPending && request.Status == PaymentStatus.Refunded)
+        {
+            // Confirma a devolução sem apagar origem/data do pagamento original nem mudar o valor.
+            fee.Status = PaymentStatus.Refunded;
+            fee.Notes = request.Notes ?? fee.Notes;
+            fee.RecordedByUserId = userId;
+            TouchMatchFee(fee, now);
+            _db.AuditEntries.Add(new AuditEntry
+            {
+                Id = Guid.NewGuid(),
+                GroupId = groupId,
+                ActorUserId = userId,
+                Action = "match_fee.refunded",
+                EntityType = nameof(MatchFeePayment),
+                EntityId = fee.Id,
+                PayloadJson = JsonSerializer.Serialize(new { matchId, playerProfileId, amount = fee.Amount, paymentSource = fee.PaymentSource.ToString() })
+            });
+            await _db.SaveChangesAsync(ct);
+            return await MapAdminFeeAsync(fee, matchId, playerProfileId, now, ct);
+        }
+        if (fee is not null && fee.Status is PaymentStatus.RefundPending or PaymentStatus.Refunded)
+            throw new ConflictException("Diária em devolução não pode ser alterada; confirme a devolução.");
+
         if (fee is null)
         {
             fee = new MatchFeePayment
@@ -610,7 +644,11 @@ public sealed class PixPaymentService : IPixPaymentService
         TouchMatchFee(fee, now);
 
         await _db.SaveChangesAsync(ct);
+        return await MapAdminFeeAsync(fee, matchId, playerProfileId, now, ct);
+    }
 
+    private async Task<AdminMatchFeeDto> MapAdminFeeAsync(MatchFeePayment fee, Guid matchId, Guid playerProfileId, DateTimeOffset now, CancellationToken ct)
+    {
         var name = (await AccessHelper.DisplayNamesForProfilesAsync(_db, [playerProfileId], ct))
             .GetValueOrDefault(playerProfileId, "Jogador");
         var reg = await _db.MatchRegistrations.AsNoTracking()
@@ -622,9 +660,10 @@ public sealed class PixPaymentService : IPixPaymentService
         return new AdminMatchFeeDto(
             fee.Id, matchId, playerProfileId, name,
             (reg?.PriorityClass ?? PriorityClass.Casual).ToString(),
-            fee.Amount, fee.Status.ToString(), fee.PaymentSource.ToString(),
+            fee.Amount, MatchDayFeePolicy.EffectiveStatus(fee.Status, fee.DueAt, now).ToString(), fee.PaymentSource.ToString(),
             fee.PaidAt, fee.Notes,
-            latestPix is null ? null : MapChargeSummary(latestPix, now));
+            latestPix is null ? null : MapChargeSummary(latestPix, now),
+            fee.DueAt);
     }
 
     public async Task<AdminPixOverviewDto> GetAdminPixOverviewAsync(
@@ -827,7 +866,7 @@ public sealed class PixPaymentService : IPixPaymentService
             charge.ApprovedAt = mpStatus.DateApproved ?? now;
             charge.UpdatedAt = now;
 
-            if (obligationStatus != PaymentStatus.Paid)
+            if (obligationStatus is not (PaymentStatus.Paid or PaymentStatus.RefundPending or PaymentStatus.Refunded))
             {
                 if (pay is not null)
                 {

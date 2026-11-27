@@ -25,10 +25,10 @@ public class PlayerRatingsApiTests : IClassFixture<WebApplicationFactory<Program
     public async Task Admin_sets_separate_ratings_and_player_cannot()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988886001", displayName = "Goleiro Linha" });
+        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988886001", displayName = "Goleiro Linha", password = TestAuth.Password });
         var profileId = (await reg.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("playerProfileId").GetGuid();
 
-        var login = await client.PostAsJsonAsync("/api/auth/login", new { phone = AdminPhone });
+        var login = await TestAuth.LoginAsync(client, AdminPhone);
         var groupId = (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
         var url = $"/api/groups/{groupId}/players/{profileId}/ratings";
 
@@ -54,7 +54,7 @@ public class PlayerRatingsApiTests : IClassFixture<WebApplicationFactory<Program
         Assert.Equal(HttpStatusCode.BadRequest, outOfRange.StatusCode);
         Assert.Contains("entre 0 e 10", (await outOfRange.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString());
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11988886001" });
+        await TestAuth.LoginAsync(client, "11988886001");
         var forbidden = await client.PutAsJsonAsync(url, new { lineRating = 10m, canPlayGoalkeeper = true, goalkeeperRating = 10m });
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
     }

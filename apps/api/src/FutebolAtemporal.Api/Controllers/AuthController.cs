@@ -29,10 +29,30 @@ public sealed class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
-        var (ok, error) = await _auth.LoginAsync(request, ct);
-        if (!ok) return Unauthorized(new { title = "Login falhou", detail = error });
+        var (ok, error, code) = await _auth.LoginAsync(request, ct);
+        if (!ok) return Unauthorized(new { title = "Login falhou", detail = error, code });
         var me = await _auth.GetCurrentUserAsync(ct);
         return Ok(me);
+    }
+
+    /// <summary>Cria a senha do primeiro admin com o código de configuração; depois fica desativado.</summary>
+    [HttpPost("admin-setup")]
+    [AllowAnonymous]
+    public async Task<IActionResult> AdminSetup([FromBody] AdminSetupRequest request, CancellationToken ct)
+    {
+        var (ok, status, error, code) = await _auth.SetupFirstAdminAsync(request, ct);
+        if (!ok) return StatusCode(status, new { title = "Configuração do admin falhou", detail = error, code });
+        return Ok(await _auth.GetCurrentUserAsync(ct));
+    }
+
+    /// <summary>Recuperação do admin: código temporário do operador, uso único, só para o celular do admin.</summary>
+    [HttpPost("admin-recovery")]
+    [AllowAnonymous]
+    public async Task<IActionResult> AdminRecovery([FromBody] AdminRecoveryRequest request, CancellationToken ct)
+    {
+        var (ok, status, error, code) = await _auth.RecoverAdminAsync(request, ct);
+        if (!ok) return StatusCode(status, new { title = "Recuperação do admin falhou", detail = error, code });
+        return Ok(await _auth.GetCurrentUserAsync(ct));
     }
 
     [HttpPost("logout")]
@@ -71,8 +91,21 @@ public sealed class AuthController : ControllerBase
 public sealed class GroupsController : ControllerBase
 {
     private readonly IGroupQueryService _groups;
+    private readonly IAuthService _auth;
 
-    public GroupsController(IGroupQueryService groups) => _groups = groups;
+    public GroupsController(IGroupQueryService groups, IAuthService auth)
+    {
+        _groups = groups;
+        _auth = auth;
+    }
+
+    /// <summary>Recuperação de senha: o admin do grupo define a nova senha do jogador.</summary>
+    [HttpPut("{groupId:guid}/players/{playerProfileId:guid}/password")]
+    public async Task<IActionResult> ResetPassword(Guid groupId, Guid playerProfileId, [FromBody] AdminResetPasswordRequest body, CancellationToken ct)
+    {
+        await _auth.AdminResetPasswordAsync(User.GetUserId(), groupId, playerProfileId, body, ct);
+        return NoContent();
+    }
 
     [HttpGet("current")]
     public async Task<IActionResult> Current(CancellationToken ct)

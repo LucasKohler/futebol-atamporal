@@ -27,7 +27,7 @@ public class PresenceQueueTests : IClassFixture<WebApplicationFactory<Program>>
     private async Task<HttpClient> PlayerAsync(string phone, string name)
     {
         var client = NewClient();
-        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone, displayName = name });
+        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone, displayName = name, password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
         return client;
     }
@@ -35,7 +35,7 @@ public class PresenceQueueTests : IClassFixture<WebApplicationFactory<Program>>
     private async Task<(HttpClient Admin, Guid MatchId)> AdminWithMatchAsync(int limit)
     {
         var admin = NewClient();
-        var login = await admin.PostAsJsonAsync("/api/auth/login", new { phone = AdminPhone });
+        var login = await TestAuth.LoginAsync(admin, AdminPhone);
         var groupId = (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
         var create = await admin.PostAsJsonAsync("/api/matches", new
         {

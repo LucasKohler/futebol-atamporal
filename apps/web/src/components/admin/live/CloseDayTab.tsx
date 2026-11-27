@@ -155,12 +155,16 @@ export function CloseDayTab({
               {issue}
             </p>
           ) : null}
+          <p className="text-body-md text-fg-secondary">
+            Ao concluir, cada presente que não é mensalista ativo recebe a diária pelo valor configurado agora. Corrigir alguém para
+            ausente depois remove a diária não paga ou marca a paga para devolução.
+          </p>
           <div>
             <AdminConfirmButton
               tone="neutral"
               className={primaryButton}
               label="Concluir a pelada do dia"
-              question="Concluir o dia? Depois, mudanças só por correção com motivo."
+              question="Concluir o dia? As diárias dos presentes avulsos serão lançadas agora, com vencimento no fim do dia. Depois, mudanças só por correção com motivo."
               confirmLabel="Concluir dia"
               disabled={busy || !!issue || !bestOk || !bestGkOk}
               onConfirm={() =>

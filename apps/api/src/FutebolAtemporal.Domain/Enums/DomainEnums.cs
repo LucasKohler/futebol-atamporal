@@ -54,7 +54,11 @@ public enum PaymentStatus
     Paid = 1,
     Overdue = 2,
     Exempt = 3,
-    Cancelled = 4
+    Cancelled = 4,
+    /// <summary>Paga, mas a presença foi corrigida para ausente: o valor deve ser devolvido.</summary>
+    RefundPending = 5,
+    /// <summary>Devolução confirmada pelo admin.</summary>
+    Refunded = 6
 }
 
 public enum TeamDrawStatus

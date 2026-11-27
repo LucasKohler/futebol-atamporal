@@ -26,7 +26,7 @@ public class StateContractTests : IClassFixture<WebApplicationFactory<Program>>
 
     private static async Task<Guid> LoginAdminAsync(HttpClient client)
     {
-        var login = await client.PostAsJsonAsync("/api/auth/login", new { phone = AdminPhone });
+        var login = await TestAuth.LoginAsync(client, AdminPhone);
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var me = await login.Content.ReadFromJsonAsync<JsonElement>();
         return me.GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
@@ -34,7 +34,7 @@ public class StateContractTests : IClassFixture<WebApplicationFactory<Program>>
 
     private static async Task<Guid> RegisterAsync(HttpClient client, string phone, string name)
     {
-        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone, displayName = name });
+        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone, displayName = name, password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
         return (await reg.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("playerProfileId").GetGuid();
     }
@@ -66,7 +66,7 @@ public class StateContractTests : IClassFixture<WebApplicationFactory<Program>>
         var matchId = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/matches/{matchId}/join", null)).StatusCode);
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11988881001" });
+        await TestAuth.LoginAsync(client, "11988881001");
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/matches/{matchId}/join", null)).StatusCode);
         await RegisterAsync(client, "11988881003", "Linha Tres"); // três cores exigem 3 confirmados
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/matches/{matchId}/join", null)).StatusCode);

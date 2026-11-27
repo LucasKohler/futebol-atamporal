@@ -32,7 +32,7 @@ public class PixMercadoPagoApiTests : IClassFixture<WebApplicationFactory<Progra
 
     private static async Task<(Guid ProfileId, Guid GroupId)> RegisterAsync(HttpClient client, string phone, string name)
     {
-        var resp = await client.PostAsJsonAsync("/api/auth/register", new { phone, displayName = name });
+        var resp = await client.PostAsJsonAsync("/api/auth/register", new { phone, displayName = name, password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
         return (
@@ -42,7 +42,7 @@ public class PixMercadoPagoApiTests : IClassFixture<WebApplicationFactory<Progra
 
     private static async Task<Guid> LoginAdminAsync(HttpClient client)
     {
-        var resp = await client.PostAsJsonAsync("/api/auth/login", new { phone = AdminPhone });
+        var resp = await TestAuth.LoginAsync(client, AdminPhone);
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
         return json.GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
@@ -219,6 +219,7 @@ public class PixMercadoPagoApiTests : IClassFixture<WebApplicationFactory<Progra
 
         Assert.Equal(HttpStatusCode.OK, (await casual1.PostAsync($"/api/matches/{matchId}/join", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await casual2.PostAsync($"/api/matches/{matchId}/join", null)).StatusCode);
+        await CloseForChargesAsync(matchId); // diária só é cobrada após o fechamento
 
         // Avulso 1 vê a diária de R$ 35 em my-payments e gera o Pix
         var my1 = await (await casual1.GetAsync($"/api/groups/{groupId}/my-payments")).Content.ReadFromJsonAsync<JsonElement>();
@@ -301,6 +302,7 @@ public class PixMercadoPagoApiTests : IClassFixture<WebApplicationFactory<Progra
         var matchId = (await createMatch.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"/api/matches/{matchId}/transition", new { status = "RegistrationOpen" })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await player.PostAsync($"/api/matches/{matchId}/join", null)).StatusCode);
+        await CloseForChargesAsync(matchId); // diária só é cobrada após o fechamento
 
         var pix = await (await player.PostAsJsonAsync($"/api/payments/diarias/{matchId}/pix", new { })).Content.ReadFromJsonAsync<JsonElement>();
         var chargeId = pix.GetProperty("id").GetGuid();
@@ -448,6 +450,7 @@ public class PixMercadoPagoApiTests : IClassFixture<WebApplicationFactory<Progra
         var matchId = match.GetProperty("id").GetGuid();
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"/api/matches/{matchId}/transition", new { status = "RegistrationOpen" })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await casual.PostAsync($"/api/matches/{matchId}/join", null)).StatusCode);
+        await CloseForChargesAsync(matchId); // diária só é cobrada após o fechamento
 
         var feePix = await (await casual.PostAsJsonAsync($"/api/payments/diarias/{matchId}/pix", new { })).Content.ReadFromJsonAsync<JsonElement>();
         var feeChargeId = feePix.GetProperty("id").GetGuid();
@@ -480,6 +483,7 @@ public class PixMercadoPagoApiTests : IClassFixture<WebApplicationFactory<Progra
         var matchId = match.GetProperty("id").GetGuid();
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"/api/matches/{matchId}/transition", new { status = "RegistrationOpen" })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await member.PostAsync($"/api/matches/{matchId}/join", null)).StatusCode);
+        await CloseForChargesAsync(matchId); // diária só é cobrada após o fechamento
 
         var resp = await member.PostAsJsonAsync($"/api/payments/diarias/{matchId}/pix", new { });
         Assert.Equal(HttpStatusCode.Conflict, resp.StatusCode);
@@ -511,7 +515,7 @@ public class PixMercadoPagoApiTests : IClassFixture<WebApplicationFactory<Progra
                 using var player = firstHost.CreateClient();
                 var (_, groupId) = await RegisterAsync(player, playerPhone, "Diarista Reinício");
                 await LoginAdminAsync(admin);
-                firstMatchId = await CreateConfirmedMatchAsync(admin, player, groupId);
+                firstMatchId = await CreateConfirmedMatchAsync(admin, player, groupId, firstHost);
                 var charge = await GenerateMatchDayPixAsync(player, firstMatchId);
                 oldChargeId = charge.GetProperty("id").GetGuid();
                 oldProviderId = charge.GetProperty("mpPaymentId").GetString()!;
@@ -523,13 +527,13 @@ public class PixMercadoPagoApiTests : IClassFixture<WebApplicationFactory<Progra
                 using var player = restartedHost.CreateClient();
                 var groupId = await LoginAdminAsync(admin);
                 Assert.Equal(HttpStatusCode.OK,
-                    (await player.PostAsJsonAsync("/api/auth/login", new { phone = playerPhone })).StatusCode);
+                    (await TestAuth.LoginAsync(player, playerPhone)).StatusCode);
 
                 var reused = await GenerateMatchDayPixAsync(player, firstMatchId);
                 Assert.Equal(oldProviderId, reused.GetProperty("mpPaymentId").GetString());
                 Assert.True(reused.GetProperty("reused").GetBoolean());
 
-                var secondMatchId = await CreateConfirmedMatchAsync(admin, player, groupId);
+                var secondMatchId = await CreateConfirmedMatchAsync(admin, player, groupId, restartedHost);
                 var newCharge = await GenerateMatchDayPixAsync(player, secondMatchId);
                 Assert.NotEqual(oldProviderId, newCharge.GetProperty("mpPaymentId").GetString());
 
@@ -694,7 +698,17 @@ public class PixMercadoPagoApiTests : IClassFixture<WebApplicationFactory<Progra
         Assert.True(await resultDb.AuditEntries.AnyAsync(a => a.Action == "PixAmountMismatch" && a.EntityId == chargeId));
     }
 
-    private static async Task<Guid> CreateConfirmedMatchAsync(HttpClient admin, HttpClient player, Guid groupId)
+    /// <summary>Encerra a partida direto no banco: estes testes cobrem o Pix, não o lançamento no fechamento.</summary>
+    private async Task CloseForChargesAsync(Guid matchId, WebApplicationFactory<Program>? host = null)
+    {
+        using var scope = (host ?? _factory).Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var match = await db.Matches.FirstAsync(m => m.Id == matchId);
+        match.Status = FutebolAtemporal.Domain.Enums.MatchStatus.Completed;
+        await db.SaveChangesAsync();
+    }
+
+    private async Task<Guid> CreateConfirmedMatchAsync(HttpClient admin, HttpClient player, Guid groupId, WebApplicationFactory<Program>? host = null)
     {
         using var response = await admin.PostAsJsonAsync("/api/matches",
             new { groupId, title = "Partida Pix", startsAt = DateTimeOffset.UtcNow.AddDays(5), location = "Arena Pix", playerLimit = 14 });
@@ -704,6 +718,7 @@ public class PixMercadoPagoApiTests : IClassFixture<WebApplicationFactory<Progra
         Assert.Equal(HttpStatusCode.OK,
             (await admin.PostAsJsonAsync($"/api/matches/{matchId}/transition", new { status = "RegistrationOpen" })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await player.PostAsync($"/api/matches/{matchId}/join", null)).StatusCode);
+        await CloseForChargesAsync(matchId, host); // diária só é cobrada após o fechamento
         return matchId;
     }
 

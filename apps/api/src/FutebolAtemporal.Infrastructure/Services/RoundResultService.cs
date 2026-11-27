@@ -460,8 +460,12 @@ public sealed class RoundResultService : IRoundResultService
         });
         await ApplyDerivedAsync(match, draw, sheet, userId, ct);
 
+        var closedAt = DateTimeOffset.UtcNow;
+        await MatchDayFeeLifecycle.LaunchOnCloseAsync(
+            _db, match, sheet.Participants.Where(p => p.Present).Select(p => p.PlayerProfileId).ToList(), userId, closedAt, ct);
+
         match.Status = MatchStatus.Completed;
-        match.UpdatedAt = DateTimeOffset.UtcNow;
+        match.UpdatedAt = closedAt;
         match.Version++;
         Audit(match, userId, "result.closed", new
         {
@@ -507,6 +511,8 @@ public sealed class RoundResultService : IRoundResultService
             CreatedByUserId = userId
         });
         await ApplyDerivedAsync(match, draw, sheet, userId, ct);
+        await MatchDayFeeLifecycle.ApplyPresenceCorrectionAsync(
+            _db, match, DeserializeSheet(current.SheetJson), sheet, userId, request.Reason!.Trim(), ct);
 
         match.UpdatedAt = DateTimeOffset.UtcNow;
         match.Version++;

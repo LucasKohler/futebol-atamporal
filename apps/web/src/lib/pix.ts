@@ -24,9 +24,60 @@ export const GATEWAY_MODE_LABEL: Record<string, string> = {
   Unconfigured: "Mercado Pago não configurado",
 };
 
-/** Obrigação quitada (por Pix ou baixa manual) ou isenta: nada a pagar. */
+/** Obrigação quitada (por Pix ou baixa manual), isenta, removida ou em devolução: nada a pagar. */
 export function isSettled(obligationStatus: string): boolean {
-  return obligationStatus === "Paid" || obligationStatus === "Exempt" || obligationStatus === "Cancelled";
+  return (
+    obligationStatus === "Paid" ||
+    obligationStatus === "Exempt" ||
+    obligationStatus === "Cancelled" ||
+    obligationStatus === "RefundPending" ||
+    obligationStatus === "Refunded"
+  );
+}
+
+export type FeeTone = "success" | "warning" | "danger" | "info" | "neutral";
+
+/**
+ * Selo da diária do jogador. `dueAt` nulo = cobrança ainda não lançada no fechamento da rodada
+ * (contrato backend 2026-11-27). Overdue/RefundPending/Refunded vêm calculados pela API.
+ */
+export function matchFeeBadge(status: string, dueAt: string | null | undefined): { label: string; tone: FeeTone } {
+  switch (status) {
+    case "Paid":
+      return { label: "Paga", tone: "success" };
+    case "Overdue":
+      return { label: "Atrasada", tone: "danger" };
+    case "Exempt":
+      return { label: "Isenta", tone: "info" };
+    case "Cancelled":
+      return { label: "Removida", tone: "neutral" };
+    case "RefundPending":
+      return { label: "Devolução pendente", tone: "warning" };
+    case "Refunded":
+      return { label: "Devolvida", tone: "neutral" };
+    case "NotCharged":
+      // Backend 27/11: partida ainda não fechada pelo admin; nada gravado, sem Pix.
+      return { label: "Sem cobrança ainda", tone: "neutral" };
+    case "Pending":
+      // Sem dueAt = cobrança ainda não lançada no fechamento: nada a pagar (sem Pix antes do fechamento).
+      return dueAt ? { label: "Pendente", tone: "warning" } : { label: "Sem cobrança ainda", tone: "neutral" };
+    default:
+      return { label: status, tone: "neutral" };
+  }
+}
+
+/** Diária lançada no fechamento e ainda em aberto (pendente no dia ou atrasada). */
+export function isLaunchedOpenFee(fee: { status: string; dueAt?: string | null }): boolean {
+  return fee.status === "Overdue" || (fee.status === "Pending" && !!fee.dueAt);
+}
+
+/** "Pague até 23:59 de hoje" a partir do vencimento (meia-noite seguinte ao fechamento, fuso do grupo). */
+export function dueAtText(dueAt: string, timeZone?: string): string {
+  const due = new Date(dueAt);
+  if (Number.isNaN(due.getTime())) return "";
+  const lastMinute = new Date(due.getTime() - 60_000);
+  const day = lastMinute.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone });
+  return `até 23:59 de ${day}`;
 }
 
 export function remainingMs(expiresAt: string, now: number): number {
@@ -85,7 +136,15 @@ export function isActivePix(pix: Pick<PixChargeSummary, "status" | "expiresAt"> 
   return !!pix && pix.status === "Pending" && remainingMs(pix.expiresAt, now) > 0;
 }
 
-export type ObligationActions = { pix: boolean; sync: boolean; markPaid: boolean; revertPending: boolean; exempt: boolean };
+export type ObligationActions = {
+  pix: boolean;
+  sync: boolean;
+  markPaid: boolean;
+  revertPending: boolean;
+  exempt: boolean;
+  /** Diária em devolução: admin confirma que devolveu (PUT status Refunded). */
+  confirmRefund: boolean;
+};
 
 /**
  * Ações do admin numa mensalidade ou diária (mesma regra nas duas telas).
@@ -100,12 +159,15 @@ export function obligationActions(
 ): ObligationActions {
   const open = status === "Pending" || status === "Overdue";
   const paidByPix = status === "Paid" && source === "Pix";
+  // Devolução: a API só aceita RefundPending → Refunded, e Refunded é final.
+  const refund = status === "RefundPending" || status === "Refunded";
   return {
     pix: open,
-    sync: isActivePix(latestPix, now),
-    markPaid: status !== "Paid",
+    sync: !refund && isActivePix(latestPix, now),
+    markPaid: status !== "Paid" && !refund,
     revertPending: (status === "Paid" && !paidByPix) || status === "Exempt",
     exempt: open,
+    confirmRefund: status === "RefundPending",
   };
 }
 

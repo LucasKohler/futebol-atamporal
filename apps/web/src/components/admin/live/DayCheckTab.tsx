@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AdminConfirmButton } from "@/components/admin/AdminDrawer";
+import { RowMenu } from "@/components/admin/RowMenu";
 import { StatusBadge } from "@/components/admin/AdminCard";
 import { inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
 import { colorResolver, DayGamesList, DayStandings } from "@/components/live/DayBoard";
@@ -149,16 +150,20 @@ export function DayCheckTab({
               <button type="button" disabled={busy} className={secondaryButton} onClick={() => setEditing(g.id)} aria-label={`Editar partida ${g.order}: ${colorOf(g.homeTeamId)} x ${colorOf(g.awayTeamId)}`}>
                 Editar
               </button>
-              <AdminConfirmButton
-                label="Excluir"
-                question={`Excluir a partida #${g.order}?`}
-                confirmLabel="Excluir"
-                disabled={busy}
-                onConfirm={() => {
-                  if (completed) setEdits((e) => ({ ...e, [g.id]: "deleted" }));
-                  else mutate((v) => api.deleteLiveGame(day.matchId, g.id, v), `Partida #${g.order} excluída; as seguintes foram renumeradas.`);
-                }}
-              />
+              {/* Ação destrutiva fora da vista (DS ListRow): menu "⋯" com confirmação. */}
+              <RowMenu label={`Mais ações da partida ${g.order}`} disabled={busy}>
+                <AdminConfirmButton
+                  tone="danger"
+                  label="Excluir partida"
+                  question={`Excluir a partida #${g.order}?`}
+                  confirmLabel="Excluir"
+                  disabled={busy}
+                  onConfirm={() => {
+                    if (completed) setEdits((e) => ({ ...e, [g.id]: "deleted" }));
+                    else mutate((v) => api.deleteLiveGame(day.matchId, g.id, v), `Partida #${g.order} excluída; as seguintes foram renumeradas.`);
+                  }}
+                />
+              </RowMenu>
             </>
           )
         }

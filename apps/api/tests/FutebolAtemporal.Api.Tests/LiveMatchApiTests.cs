@@ -37,7 +37,7 @@ public class LiveMatchApiTests : IClassFixture<WebApplicationFactory<Program>>
     private async Task<LiveScenario> DrawnScenarioAsync(string prefix, DateTimeOffset? startsAt = null)
     {
         var admin = NewClient();
-        var login = await admin.PostAsJsonAsync("/api/auth/login", new { phone = AdminPhone });
+        var login = await TestAuth.LoginAsync(admin, AdminPhone);
         var groupId = (await Json(login)).GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
         var create = await admin.PostAsJsonAsync("/api/matches", new
         {
@@ -55,7 +55,7 @@ public class LiveMatchApiTests : IClassFixture<WebApplicationFactory<Program>>
         foreach (var (name, i) in new[] { "G1", "G2", "G3", "L1", "L2", "L3", "L4", "L5" }.Select((n, i) => (n, i)))
         {
             var c = NewClient();
-            var reg = await c.PostAsJsonAsync("/api/auth/register", new { phone = $"1197{prefix}{i:D5}", displayName = name });
+            var reg = await c.PostAsJsonAsync("/api/auth/register", new { phone = $"1197{prefix}{i:D5}", displayName = name, password = TestAuth.Password });
             var id = (await Json(reg)).GetProperty("playerProfileId").GetGuid();
             await c.PostAsync($"/api/matches/{matchId}/join", null);
             if (name.StartsWith('G'))

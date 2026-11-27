@@ -72,6 +72,10 @@ export const PAYMENT_STATUS_LABEL: Record<string, string> = {
   Paid: "Pago",
   Exempt: "Isento",
   Cancelled: "Cancelado",
+  // Diária: presença corrigida para ausente depois de paga (contrato backend 2026-11-27).
+  RefundPending: "Devolução pendente",
+  Refunded: "Devolvido",
+  NotCharged: "Sem cobrança ainda",
 };
 
 /** Em aberto = pendente ou atrasado. */

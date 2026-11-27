@@ -42,11 +42,16 @@ public static class DependencyInjection
                 options.Password.RequireLowercase = true;
                 options.Password.RequireNonAlphanumeric = false;
                 options.User.RequireUniqueEmail = false;
-                options.Lockout.AllowedForNewUsers = false;
-                options.Lockout.MaxFailedAccessAttempts = 8;
+                // Decisão do Lucas: bloqueio após 5 tentativas erradas, por 5 minutos.
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
             })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
+
+        // Revalida sessões para que reset e recuperação encerrem sessões antigas imediatamente.
+        services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.Zero);
 
         services.ConfigureApplicationCookie(options =>
         {
@@ -231,5 +236,9 @@ public static class DependencyInjection
         }
 
         await db.SaveChangesAsync();
+        if (!await userManager.GetLockoutEnabledAsync(admin))
+            await userManager.SetLockoutEnabledAsync(admin, true);
+        if (!await userManager.HasPasswordAsync(admin))
+            logger.LogInformation("Admin ainda sem senha: crie-a uma vez em POST /api/auth/admin-setup com o código de configuração.");
     }
 }

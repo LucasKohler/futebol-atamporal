@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminEmpty } from "@/components/admin/AdminCard";
-import { focusRing, inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
+import { focusRing, gameButton, inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
 import { colorResolver, DayStandings } from "@/components/live/DayBoard";
 import { api, type LiveDay } from "@/lib/api";
 import {
@@ -166,17 +166,24 @@ export function LiveTab({ day, busy, mutate, onGoToCheck }: { day: LiveDay; busy
               <p className="text-display tabular-nums" aria-live="polite" aria-label={`${style.label} ${score[teamId]} gols`}>
                 {score[teamId]}
               </p>
+              <p className="min-h-4 text-caption text-fg-secondary">
+                {last ? `Último: ${playerDisplayName(last.displayName)}${last.ownGoal ? " (contra)" : ""}` : "Sem gols"}
+              </p>
+              {/* Desfazer explícito: remove o último gol da cor e a autoria juntos (placar + artilharia). */}
               <button
                 type="button"
                 disabled={busy || !last}
-                className={`${secondaryButton} w-full`}
-                aria-label={`Desfazer último gol do ${style.label}${last ? ` (${playerDisplayName(last.displayName)})` : ""}`}
+                className={`${gameButton} w-full border border-line-control bg-card text-body-md text-fg hover:bg-subtle`}
+                aria-label={last ? `Desfazer o último gol do ${style.label}, de ${playerDisplayName(last.displayName)}` : `Sem gol do ${style.label} para desfazer`}
                 onClick={() =>
                   last &&
-                  mutate((v) => api.removeLiveGoal(day.matchId, game.id, last.id, v), `Gol de ${playerDisplayName(last.displayName)} removido.`)
+                  mutate(
+                    (v) => api.removeLiveGoal(day.matchId, game.id, last.id, v),
+                    `Gol de ${playerDisplayName(last.displayName)} desfeito: placar e artilharia corrigidos.`,
+                  )
                 }
               >
-                − desfazer gol
+                <span aria-hidden="true">↶</span> Desfazer gol
               </button>
             </div>
           );
@@ -190,7 +197,7 @@ export function LiveTab({ day, busy, mutate, onGoToCheck }: { day: LiveDay; busy
             type="button"
             aria-pressed={ownGoal}
             onClick={() => setOwnGoal((v) => !v)}
-            className={`min-h-11 rounded-full border px-3 text-label-md ${ownGoal ? "border-error bg-error-container text-on-error-container" : "border-outline-variant"} ${focusRing}`}
+            className={`min-h-touch-game rounded-full border px-4 text-body-md font-semibold ${ownGoal ? "border-danger bg-danger-bg text-danger-strong" : "border-line-control bg-card"} ${focusRing}`}
           >
             {ownGoal ? "Próximo toque: gol contra" : "Gol contra"}
           </button>
@@ -198,8 +205,8 @@ export function LiveTab({ day, busy, mutate, onGoToCheck }: { day: LiveDay; busy
         {sides.map((teamId) => {
           const players = day.players.filter((p) => p.teamId === teamId && p.present);
           return (
-            <div key={teamId} role="group" aria-label={`Jogadores do ${colorOf(teamId)}`} className="flex flex-wrap gap-1">
-              <span className="w-full text-label-md text-on-surface-variant">{colorOf(teamId)}</span>
+            <div key={teamId} role="group" aria-label={`Jogadores do ${colorOf(teamId)}`} className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <span className="col-span-2 w-full text-label-md text-fg-secondary">{colorOf(teamId)}</span>
               {players.map((p) => {
                 const name = playerDisplayName(p.displayName);
                 return (
@@ -209,28 +216,28 @@ export function LiveTab({ day, busy, mutate, onGoToCheck }: { day: LiveDay; busy
                     disabled={busy}
                     onClick={() => addGoal(p.playerProfileId, name, teamId)}
                     aria-label={`${ownGoal ? "Gol contra de" : "Gol de"} ${name} (${colorOf(teamId)})`}
-                    className={`min-h-11 rounded-full border px-3 text-body-md disabled:opacity-50 ${ownGoal ? "border-error" : "border-outline-variant bg-surface-container-low"} ${focusRing}`}
+                    className={`${gameButton} min-w-0 border ${ownGoal ? "border-danger bg-card" : "border-line-control bg-subtle"} text-fg`}
                   >
                     {ownGoal ? "GC " : "+ "}
                     {name}
                   </button>
                 );
               })}
-              {players.length === 0 ? <span className="text-label-md text-on-surface-variant">Ninguém presente.</span> : null}
+              {players.length === 0 ? <span className="col-span-2 text-label-md text-fg-secondary">Ninguém presente.</span> : null}
             </div>
           );
         })}
       </div>
 
       {tied ? (
-        <fieldset className="rounded-xl border-2 border-amber-700 bg-amber-50 p-md">
-          <legend className="px-1 text-body-lg font-semibold text-amber-900">Decisão nos pênaltis alternados</legend>
-          <p className="text-body-md text-amber-900">Empatou: quem ganhou nos pênaltis? (não conta no placar nem na artilharia)</p>
+        <fieldset className="rounded-xl border-2 border-warning bg-warning-subtle p-md">
+          <legend className="px-1 text-body-lg font-semibold text-warning-strong">Decisão nos pênaltis alternados</legend>
+          <p className="text-body-md text-warning-strong">Empatou: quem ganhou nos pênaltis? (não conta no placar nem na artilharia)</p>
           <div className="mt-sm grid grid-cols-2 gap-2">
             {sides.map((id) => (
               <label
                 key={id}
-                className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border-2 px-3 text-body-lg has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-pitch-green-container ${
+                className={`flex min-h-touch-game cursor-pointer items-center justify-center gap-2 rounded-full border-2 px-3 text-body-lg has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-pitch-green-container ${
                   penWinner === id ? "border-pitch-green-container bg-pitch-green-container text-on-primary" : "border-outline-variant bg-surface-container-lowest"
                 }`}
               >

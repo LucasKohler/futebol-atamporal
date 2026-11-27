@@ -13,6 +13,7 @@ describe("ações do admin por obrigação (QA/revisor: Isentar)", () => {
       markPaid: false,
       revertPending: false,
       exempt: false,
+      confirmRefund: false,
     });
   });
 
@@ -23,7 +24,7 @@ describe("ações do admin por obrigação (QA/revisor: Isentar)", () => {
   });
 
   it("pendente ou atrasada: Pix, baixa manual e Isentar; sincronizar só com Pix ativo", () => {
-    expect(obligationActions("Pending", "None", null, NOW)).toEqual({ pix: true, sync: false, markPaid: true, revertPending: false, exempt: true });
+    expect(obligationActions("Pending", "None", null, NOW)).toEqual({ pix: true, sync: false, markPaid: true, revertPending: false, exempt: true, confirmRefund: false });
     expect(obligationActions("Overdue", "None", activePix, NOW)).toMatchObject({ exempt: true, sync: true });
   });
 
@@ -33,6 +34,18 @@ describe("ações do admin por obrigação (QA/revisor: Isentar)", () => {
 
   it("cancelada: sem Isentar nem Pix", () => {
     expect(obligationActions("Cancelled", "None", null, NOW)).toMatchObject({ exempt: false, pix: false });
+  });
+
+  it("devolução pendente: só confirmar devolução; devolvida é final", () => {
+    expect(obligationActions("RefundPending", "Pix", activePix, NOW)).toEqual({
+      pix: false,
+      sync: false,
+      markPaid: false,
+      revertPending: false,
+      exempt: false,
+      confirmRefund: true,
+    });
+    expect(obligationActions("Refunded", "Pix", null, NOW)).toMatchObject({ confirmRefund: false, markPaid: false, revertPending: false });
   });
 });
 

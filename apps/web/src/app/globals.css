@@ -2,14 +2,108 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Design System Futebol Atemporal (tokens.css do pacote do DS).
+ * Primitivos + semânticos como variáveis CSS; o tailwind.config.ts aponta para eles.
+ * Telas usam os nomes semânticos; os nomes Material 3 antigos continuam como aliases.
+ */
 :root {
   color-scheme: light;
+
+  /* Primitivos */
+  --green-950: #002d1f;
+  --green-800: #065f46;
+  --green-700: #15803d;
+  --green-600: #16a34a;
+  --green-100: #dcfce7;
+  --ink-900: #0b1c30;
+  --neutral-900: #171717;
+  --gray-700: #404944;
+  --slate-600: #586377;
+  --gray-500: #707974;
+  --gray-450: #848e8a;
+  --gray-400: #9ca3af;
+  --gray-300: #bfc9c2;
+  --white: #ffffff;
+  --blue-50: #f8f9ff;
+  --blue-100: #eff4ff;
+  --blue-150: #e5eeff;
+  --blue-200: #d5e0f8;
+  --blue-600: #0166d6;
+  --amber-900: #78350f;
+  --amber-700: #b45309;
+  --amber-100: #fef3c7;
+  --amber-50: #fffbeb;
+  --red-600: #dc2626;
+  --red-700: #ba1a1a;
+  --red-900: #93000a;
+  --red-50: #fef2f2;
+
+  /* Semânticos */
+  --bg-page: var(--blue-50);
+  --surface: var(--white);
+  --surface-subtle: var(--blue-100);
+  --surface-selected: var(--blue-200);
+  --text-primary: var(--ink-900);
+  --text-secondary: var(--gray-700);
+  --text-muted: var(--slate-600);
+  --text-placeholder: var(--gray-400);
+  --text-on-brand: var(--white);
+  --text-brand: var(--green-800);
+  --border-subtle: var(--gray-300);
+  --border-control: var(--gray-450);
+  --focus-ring: var(--green-700);
+  --action-primary: var(--green-800);
+  --action-primary-pressed: var(--green-950);
+  --action-danger: var(--red-700);
+  --success-text: var(--green-800);
+  --success-bg: var(--green-100);
+  --warning-text: var(--amber-700);
+  --warning-text-strong: var(--amber-900);
+  --warning-bg: var(--amber-100);
+  --warning-subtle: var(--amber-50);
+  --danger-text: var(--red-700);
+  --danger-text-strong: var(--red-900);
+  --danger-bg: var(--red-50);
+  --info-text: var(--blue-600);
+  --info-bg: var(--blue-150);
+  --team-red: var(--red-600);
+  --team-black: var(--neutral-900);
+  --team-green: var(--green-600);
+  --team-green-text: var(--green-700);
+
+  /* Espaço, raio e toque */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --touch-min: 44px;
+  --touch-game: 56px;
+  --icon-md: 20px;
 }
 
 body {
-  @apply bg-background text-on-background font-sans antialiased;
+  @apply bg-page text-fg font-sans antialiased;
 }
 
 *:focus-visible {
-  @apply outline-2 outline-offset-2 outline-pitch-green-container;
+  @apply outline-2 outline-offset-2 outline-focus;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

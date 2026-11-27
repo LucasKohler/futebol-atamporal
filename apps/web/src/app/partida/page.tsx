@@ -3,19 +3,18 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { WhatsAppSummary } from "@/components/WhatsAppSummary";
 import { PaymentsLink } from "@/components/pix/PaymentsLink";
 import { PublicLiveDay } from "@/components/live/PublicLiveDay";
 import { AdminConfirmButton } from "@/components/admin/AdminDrawer";
 import { AdminSearch } from "@/components/admin/AdminSearch";
-import { RoundStepper } from "@/components/admin/RoundStepper";
-import { focusRing, inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
+import { focusRing, primaryButton, secondaryButton } from "@/components/admin/ui";
 import { filterRegistrations } from "@/lib/adminFilters";
 import { api, Draw, MatchDetail, MatchSummary } from "@/lib/api";
+import { AdminIcon } from "@/components/admin/AdminIcon";
 import { playerDisplayName } from "@/lib/playerDisplayName";
 import { formatRating } from "@/lib/ratings";
 import { deriveRoundStep } from "@/lib/roundStep";
-import { buildTeamsSummary, isGoalkeeper, isLineupFrozen, orderedMembers, teamStyle } from "@/lib/teams";
+import { isGoalkeeper, isLineupFrozen, orderedMembers, teamStyle } from "@/lib/teams";
 import { matchStatusLabel, registrationStatusLabel, useSession } from "@/lib/useSession";
 
 /** A partir desse total de inscritos, o admin ganha busca na lista. */
@@ -109,6 +108,8 @@ export default function PartidaPage() {
           <p className="text-label-sm uppercase text-on-surface-variant">Lista da partida</p>
           <h1 className="text-headline-lg">Próxima pelada</h1>
         </div>
+
+        {isAdmin && detail ? <AdminRoundBar match={detail.match} draw={rawDraw} /> : null}
 
         <div aria-live="polite" role="status" className="sr-only">
           {notice ?? ""}
@@ -208,29 +209,11 @@ export default function PartidaPage() {
               {notice ? <p className="mt-md text-label-md text-on-surface-variant">{notice}</p> : null}
             </section>
 
-            {isAdmin ? (
-              <AdminMatchPanel
-                match={match}
-                rawDraw={rawDraw}
-                busy={busy}
-                onTransition={(to, success) => run(async () => void (await api.transitionMatch(match.id, to)), success)}
-                onUpdate={(body) => run(async () => void (await api.updateMatch(match.id, body)), "Dados da partida salvos.")}
-              />
-            ) : null}
-
             {["Drawn", "InProgress", "AwaitingClose"].includes(match.status) ? <PublicLiveDay matchId={match.id} matchStatus={match.status} /> : null}
 
             {draw ? <ConfirmedTeams draw={draw} /> : null}
 
-            {isAdmin ? (
-              <WhatsAppSummary
-                detail={detail}
-                teams={draw ? buildTeamsSummary(draw) : null}
-                timeZone={group?.timeZoneId ?? "America/Sao_Paulo"}
-              />
-            ) : null}
-
-            {detail.myStatus === "Confirmed" ? <PaymentsLink text="Avulso? Pague a diária desta pelada com Pix." /> : null}
+            {detail.myStatus === "Confirmed" ? <PaymentsLink text="A diária desta pelada é lançada quando o admin fecha a rodada." /> : null}
 
             <section className="rounded-xl border-l-4 border-pitch-green-container bg-surface-container-low p-md">
               <h3 className="text-label-md">Ordem da fila</h3>
@@ -405,142 +388,6 @@ function PlayerList({
 }
 
 /** "2026-11-28T10:00" no fuso do aparelho, para o campo datetime-local (mesma regra do formulário de criação). */
-function toLocalInput(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** Controles do admin na tela da partida: etapa da rodada, transições da lista e edição dos dados. */
-function AdminMatchPanel({
-  match,
-  rawDraw,
-  busy,
-  onTransition,
-  onUpdate,
-}: {
-  match: MatchSummary;
-  rawDraw: Draw | null;
-  busy: boolean;
-  onTransition: (to: string, success: string) => void;
-  onUpdate: (body: { title: string | null; startsAt: string; location: string; playerLimit: number; notes: string | null }) => void;
-}) {
-  const step = deriveRoundStep({ status: match.status, confirmedCount: match.confirmedCount, draw: rawDraw });
-  const editable = match.status !== "Completed" && match.status !== "Cancelled";
-  const frozen = isLineupFrozen(match.status);
-  const SUCCESS: Record<string, string> = {
-    RegistrationOpen: "Inscrições abertas.",
-    InProgress: "Partida iniciada. O elenco está congelado.",
-    AwaitingClose: "Jogo encerrado. Falta lançar a súmula.",
-  };
-
-  return (
-    <section aria-labelledby="admin-partida-titulo" className="flex flex-col gap-sm rounded-xl border-l-4 border-pitch-green-container bg-surface-container-low p-md">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="admin-partida-titulo" className="text-headline-md">
-          Painel do admin
-        </h2>
-        <Link href="/admin" className={`inline-flex min-h-11 items-center text-label-md underline ${focusRing}`}>
-          Central do admin
-        </Link>
-      </div>
-
-      <RoundStepper state={step} busy={busy} hideCtaOn="/partida" onTransition={(to) => onTransition(to, SUCCESS[to] ?? "Partida atualizada.")} />
-
-      <div className="flex flex-wrap gap-2">
-        {match.status === "RegistrationOpen" ? (
-          <AdminConfirmButton
-            tone="neutral"
-            label="Encerrar inscrições"
-            question="Ninguém mais entra ou sai pela lista. Encerrar?"
-            confirmLabel="Encerrar inscrições"
-            disabled={busy}
-            onConfirm={() => onTransition("RegistrationClosed", "Inscrições encerradas.")}
-          />
-        ) : null}
-        {match.status === "RegistrationClosed" ? (
-          <button type="button" disabled={busy} className={secondaryButton} onClick={() => onTransition("RegistrationOpen", "Inscrições reabertas.")}>
-            Reabrir inscrições
-          </button>
-        ) : null}
-        {match.status === "InProgress" ? (
-          <button type="button" disabled={busy} className={secondaryButton} onClick={() => onTransition("AwaitingClose", SUCCESS.AwaitingClose)}>
-            Encerrar jogo (aguardar súmula)
-          </button>
-        ) : null}
-      </div>
-
-      {editable ? <EditMatchDetails match={match} frozen={frozen} busy={busy} onSave={onUpdate} /> : null}
-    </section>
-  );
-}
-
-function EditMatchDetails({
-  match,
-  frozen,
-  busy,
-  onSave,
-}: {
-  match: MatchSummary;
-  frozen: boolean;
-  busy: boolean;
-  onSave: (body: { title: string | null; startsAt: string; location: string; playerLimit: number; notes: string | null }) => void;
-}) {
-  const [title, setTitle] = useState(match.title ?? "");
-  const [when, setWhen] = useState(() => toLocalInput(match.startsAt));
-  const [location, setLocation] = useState(match.location);
-  const [limit, setLimit] = useState(match.playerLimit);
-  const [notes, setNotes] = useState(match.notes ?? "");
-
-  return (
-    <details className="rounded-lg border border-outline-variant bg-surface-container-lowest">
-      <summary className={`flex min-h-11 cursor-pointer items-center px-md text-label-md ${focusRing}`}>Editar dados da partida</summary>
-      <form
-        className="flex flex-col gap-md px-md pb-md"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSave({ title: title.trim() || null, startsAt: new Date(when).toISOString(), location: location.trim(), playerLimit: limit, notes: notes.trim() || null });
-        }}
-      >
-        <label className="flex flex-col gap-1 text-label-md">
-          Título
-          <input className={inputClass} value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
-        </label>
-        <div className="grid gap-md sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-label-md">
-            Data/hora
-            <input type="datetime-local" required className={inputClass} value={when} onChange={(e) => setWhen(e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1 text-label-md">
-            Limite de jogadores
-            <input
-              type="number"
-              min={2}
-              max={60}
-              required
-              disabled={frozen}
-              className={`${inputClass} disabled:opacity-50`}
-              value={limit}
-              onChange={(e) => setLimit(Number(e.target.value))}
-            />
-            {frozen ? <span className="font-normal text-on-surface-variant">Partida iniciada: o limite não muda mais.</span> : null}
-          </label>
-        </div>
-        <label className="flex flex-col gap-1 text-label-md">
-          Local
-          <input required className={inputClass} value={location} maxLength={200} onChange={(e) => setLocation(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1 text-label-md">
-          Observações
-          <textarea className={inputClass} rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </label>
-        <button type="submit" disabled={busy} className={`${primaryButton} self-start`}>
-          Salvar dados
-        </button>
-      </form>
-    </details>
-  );
-}
 
 function CreateMatchForm({ groupId, onCreated }: { groupId: string; onCreated: () => Promise<void> }) {
   const [location, setLocation] = useState("Arena Central");
@@ -582,7 +429,7 @@ function CreateMatchForm({ groupId, onCreated }: { groupId: string; onCreated: (
         Data/hora
         <input
           type="datetime-local"
-          className={`mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 ${focusRing}`}
+          className={`mt-1 min-h-touch w-full rounded-lg border border-line-control bg-card px-3 py-2 ${focusRing}`}
           value={when}
           onChange={(e) => setWhen(e.target.value)}
         />
@@ -590,7 +437,7 @@ function CreateMatchForm({ groupId, onCreated }: { groupId: string; onCreated: (
       <label className="text-label-md">
         Local
         <input
-          className={`mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 ${focusRing}`}
+          className={`mt-1 min-h-touch w-full rounded-lg border border-line-control bg-card px-3 py-2 ${focusRing}`}
           value={location}
           onChange={(e) => setLocation(e.target.value)}
         />
@@ -600,7 +447,7 @@ function CreateMatchForm({ groupId, onCreated }: { groupId: string; onCreated: (
         <input
           type="number"
           min={2}
-          className={`mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 ${focusRing}`}
+          className={`mt-1 min-h-touch w-full rounded-lg border border-line-control bg-card px-3 py-2 ${focusRing}`}
           value={limit}
           onChange={(e) => setLimit(Number(e.target.value))}
         />
@@ -614,5 +461,40 @@ function CreateMatchForm({ groupId, onCreated }: { groupId: string; onCreated: (
         Criar partida e abrir lista
       </button>
     </form>
+  );
+}
+
+/** Status em que a súmula ao vivo é o lugar de trabalho do admin. */
+const SHEET_STATUSES = ["Drawn", "InProgress", "AwaitingClose"];
+
+/**
+ * Partida admin enxuta: mesma tela do jogador + barra fixa com a etapa da rodada,
+ * "Gerenciar rodada" (Central) e atalho direto para a súmula quando o jogo está sorteado/em andamento.
+ */
+function AdminRoundBar({ match, draw }: { match: MatchSummary; draw: Draw | null }) {
+  const step = deriveRoundStep({ status: match.status, confirmedCount: match.confirmedCount, draw });
+  const sheet = SHEET_STATUSES.includes(match.status);
+  return (
+    <nav
+      aria-label="Atalhos do admin"
+      className="sticky top-14 z-20 flex flex-wrap items-center justify-between gap-2 rounded-card border border-line-subtle bg-card p-sm shadow-sm"
+    >
+      <p className="min-w-0 px-1 text-body-md">
+        <span className="text-label-md uppercase text-fg-muted">Etapa {step.current} de 4 · </span>
+        <span className="font-semibold">{step.headline}</span>
+        {step.blocker ? <span className="block text-caption text-danger">{step.blocker}</span> : null}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {sheet ? (
+          <Link href="/admin/registro" className={secondaryButton}>
+            Súmula
+          </Link>
+        ) : null}
+        <Link href="/admin" className={primaryButton}>
+          Gerenciar rodada
+          <AdminIcon name="arrow" className="h-4 w-4" />
+        </Link>
+      </div>
+    </nav>
   );
 }

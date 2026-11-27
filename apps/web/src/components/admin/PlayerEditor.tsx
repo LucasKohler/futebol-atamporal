@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { api, GroupPlayer, MonthlyMember } from "@/lib/api";
 import { formatRating, validateRatings } from "@/lib/ratings";
+import { PasswordField } from "@/components/PasswordField";
+import { passwordProblem, registerErrorMessage } from "@/lib/password";
 import { AdminConfirmButton } from "./AdminDrawer";
 import { inputClass, primaryButton, secondaryButton } from "./ui";
 
@@ -11,7 +13,7 @@ type Status = { error: boolean; text: string } | null;
 function StatusLine({ status }: { status: Status }) {
   if (!status) return null;
   return (
-    <p role={status.error ? "alert" : "status"} className={`text-label-md ${status.error ? "text-error" : "text-green-900"}`}>
+    <p role={status.error ? "alert" : "status"} className={`text-label-md ${status.error ? "text-danger" : "text-success"}`}>
       {status.text}
     </p>
   );
@@ -187,6 +189,68 @@ export function PlayerEditor({
         )}
       </div>
 
+      <PasswordReset groupId={groupId} playerProfileId={id} name={player.registeredName} />
+
+      <StatusLine status={status} />
+    </div>
+  );
+}
+
+/**
+ * Recuperação de senha pelo admin (decisão do Lucas): o admin define a nova senha e a entrega ao jogador
+ * pessoalmente. A senha não é guardada nem exibida depois de salva; o campo é limpo ao concluir.
+ */
+function PasswordReset({ groupId, playerProfileId, name }: { groupId: string; playerProfileId: string; name: string }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [status, setStatus] = useState<Status>(null);
+  const [busy, setBusy] = useState(false);
+  const fieldId = `nova-senha-${playerProfileId}`;
+  const problem = value ? passwordProblem(value) : null;
+
+  async function submit() {
+    const p = passwordProblem(value);
+    if (p) return setStatus({ error: true, text: p });
+    setBusy(true);
+    setStatus(null);
+    try {
+      await api.resetPlayerPassword(groupId, playerProfileId, value);
+      setValue("");
+      setOpen(false);
+      setStatus({ error: false, text: `Senha de ${name} redefinida. Entregue a nova senha pessoalmente.` });
+    } catch (e) {
+      setStatus({ error: true, text: e instanceof Error ? registerErrorMessage(e.message, value) : "Não foi possível redefinir a senha." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-outline-variant pt-md">
+      <p className="text-label-md">Senha de acesso</p>
+      {!open ? (
+        <button type="button" disabled={busy} className={`${secondaryButton} self-start`} onClick={() => { setOpen(true); setStatus(null); }}>
+          Redefinir senha
+        </button>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <PasswordField id={fieldId} label={`Nova senha para ${name}`} autoComplete="new-password" value={value} onChange={setValue} invalid={!!problem} showRules disabled={busy} />
+          <div className="flex flex-wrap gap-2">
+            <AdminConfirmButton
+              tone="neutral"
+              className={primaryButton}
+              label="Salvar nova senha"
+              question={`Trocar a senha de ${name}? A senha antiga deixa de valer.`}
+              confirmLabel="Trocar senha"
+              disabled={busy || !value || !!problem}
+              onConfirm={submit}
+            />
+            <button type="button" disabled={busy} className={secondaryButton} onClick={() => { setOpen(false); setValue(""); }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
       <StatusLine status={status} />
     </div>
   );

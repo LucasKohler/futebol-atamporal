@@ -7,8 +7,8 @@ import { focusRing, primaryButton, secondaryButton } from "@/components/admin/ui
 import { PixCheckout } from "@/components/pix/PixCheckout";
 import { usePixFocusReturn } from "@/components/pix/usePixFocusReturn";
 import { formatMoney } from "@/lib/adminFilters";
-import { api, MyPayments, PixCharge, type PaymentSource } from "@/lib/api";
-import { isSettled } from "@/lib/pix";
+import { api, MyMatchDayPayment, MyPayments, PixCharge, type PaymentSource } from "@/lib/api";
+import { dueAtText, isLaunchedOpenFee, isSettled, matchFeeBadge } from "@/lib/pix";
 import { monthName } from "@/lib/season";
 import { useSession } from "@/lib/useSession";
 
@@ -26,6 +26,24 @@ function sourceText(source: PaymentSource, paidAt: string | null) {
 }
 
 type Open = { key: string; charge: PixCharge; regenerate: () => Promise<void> };
+
+/** Atrasadas primeiro, depois as lançadas do dia; o resto mantém a ordem da API. */
+function feeRank(d: MyMatchDayPayment) {
+  if (d.status === "Overdue") return 0;
+  if (isLaunchedOpenFee(d)) return 1;
+  return 2;
+}
+
+/** Texto de apoio da diária conforme o ciclo (lançamento no fechamento, vencimento, devolução). */
+function feeNote(d: MyMatchDayPayment, timeZone: string | undefined): string | null {
+  if (d.status === "Overdue") return d.dueAt ? `Venceu ${dueAtText(d.dueAt, timeZone).replace("até", "às")}.` : "Diária vencida.";
+  if (d.status === "RefundPending") return "Sua presença foi corrigida para ausente. O admin vai devolver o valor pago.";
+  if (d.status === "Refunded") return "Valor devolvido pelo admin.";
+  if (d.status === "Cancelled") return "Cobrança removida pelo admin.";
+  if (d.status === "Pending" && d.dueAt) return `Pague ${dueAtText(d.dueAt, timeZone)}.`;
+  if (d.status === "Pending" || d.status === "NotCharged") return "A cobrança é lançada quando o admin fecha a rodada.";
+  return null;
+}
 
 /** Pagamentos do jogador: mensalidade da competência e diárias, com checkout Pix. */
 export default function PagamentosPage() {
@@ -47,6 +65,19 @@ export default function PagamentosPage() {
   useEffect(() => {
     load().catch((e) => setError(e instanceof Error ? e.message : "Não foi possível carregar seus pagamentos."));
   }, [load]);
+
+  // Vindo da Home ("Pagar R$ X com Pix"): abre o checkout da diária pedida uma única vez.
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (!data || autoOpened.current) return;
+    autoOpened.current = true;
+    const matchId = new URLSearchParams(window.location.search).get("diaria");
+    if (!matchId) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    const d = data.matchDays.find((x) => x.matchId === matchId);
+    const off = !data.gateway.isConfigured || data.gateway.mode === "Unconfigured";
+    if (d && isLaunchedOpenFee(d) && !off) start(`d:${d.matchId}`, () => api.createMatchDayPix(d.matchId), d.activePix);
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (open) checkoutRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -78,6 +109,30 @@ export default function PagamentosPage() {
 
   const pixOff = data && (!data.gateway.isConfigured || data.gateway.mode === "Unconfigured");
   const nothing = data && data.memberships.length === 0 && data.matchDays.length === 0;
+  const matchDays = data ? [...data.matchDays].sort((a, b) => feeRank(a) - feeRank(b)) : [];
+
+  /** Checkout Pix aberto logo abaixo do item que o pediu (antes abria no fim da lista). */
+  const checkoutFor = (key: string) =>
+    open && open.key === key ? (
+      <div ref={checkoutRef} className="mt-md flex scroll-mt-20 flex-col gap-sm border-t border-line-subtle pt-md">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-subtitle">Pagar com Pix</h3>
+          <button
+            type="button"
+            className={secondaryButton}
+            onClick={() => {
+              setOpen(null);
+              restore(key);
+              // Atualiza status e o Pix ativo (o botão passa a "Continuar pagamento Pix").
+              load().catch(() => undefined);
+            }}
+          >
+            Fechar
+          </button>
+        </div>
+        <PixCheckout key={open.charge.id} initialCharge={open.charge} onRegenerate={open.regenerate} onSettled={() => load().catch(() => undefined)} />
+      </div>
+    ) : null;
 
   return (
     <AppShell>
@@ -91,12 +146,12 @@ export default function PagamentosPage() {
         {error ? <AdminError onRetry={() => load().catch(() => undefined)}>{error}</AdminError> : null}
         {actionError ? <AdminError>{actionError}</AdminError> : null}
         {pixOff ? (
-          <p role="status" className="rounded-lg border border-amber-700 bg-amber-50 p-3 text-body-md text-amber-900">
+          <p role="status" className="rounded-lg border border-warning bg-warning-subtle p-3 text-body-md text-warning-strong">
             O pagamento por Pix está indisponível no momento. Fale com o admin para pagar de outra forma.
           </p>
         ) : null}
         {data?.gateway.isSimulated ? (
-          <p className="rounded-lg border border-amber-700 bg-amber-50 p-2 text-label-md text-amber-900">Ambiente de teste: os Pix gerados aqui são simulados.</p>
+          <p className="rounded-lg border border-warning bg-warning-subtle p-2 text-label-md text-warning-strong">Ambiente de teste: os Pix gerados aqui são simulados.</p>
         ) : null}
 
         {!data ? (
@@ -136,9 +191,10 @@ export default function PagamentosPage() {
                             data-pix-trigger={key}
                             onClick={() => start(key, () => api.createMembershipPix(m.paymentId), m.activePix)}
                           >
-                            {busyKey === key ? "Gerando Pix…" : hasActive ? "Continuar pagamento Pix" : "Pagar com Pix"}
+                            {busyKey === key ? "Gerando Pix…" : hasActive ? "Continuar pagamento Pix" : `Pagar ${formatMoney(m.amount)} com Pix`}
                           </button>
                         ) : null}
+                        {checkoutFor(key)}
                       </li>
                     );
                   })}
@@ -146,16 +202,19 @@ export default function PagamentosPage() {
               </section>
             ) : null}
 
-            {data.matchDays.length > 0 ? (
+            {matchDays.length > 0 ? (
               <section aria-labelledby="diarias-titulo" className="flex flex-col gap-sm">
                 <h2 id="diarias-titulo" className="text-headline-md">
                   Diárias
                 </h2>
                 <ul className="flex flex-col gap-sm">
-                  {data.matchDays.map((d) => {
+                  {matchDays.map((d) => {
                     const key = `d:${d.matchId}`;
-                    const ob = OBLIGATION[d.status] ?? { label: d.status, tone: "neutral" as BadgeTone };
-                    const settled = isSettled(d.status);
+                    const ob = matchFeeBadge(d.status, d.dueAt);
+                    const note = feeNote(d, group?.timeZoneId);
+                    // Decisão do Lucas: diária só existe depois que o admin fecha a rodada/dia (dueAt). Sem dueAt, sem Pix.
+                    const payable = isLaunchedOpenFee(d);
+                    const notLaunched = d.status === "NotCharged" || (d.status === "Pending" && !d.dueAt);
                     const hasActive = !!d.activePix && d.activePix.status === "Pending";
                     return (
                       <li key={key} data-pix-item={key} tabIndex={-1} className={`rounded-xl border border-outline-variant bg-surface-container-lowest p-md ${focusRing}`}>
@@ -173,12 +232,13 @@ export default function PagamentosPage() {
                               })}{" "}
                               · {d.location}
                             </p>
-                            <p className="text-headline-md">{formatMoney(d.amount)}</p>
-                            {settled ? <p className="text-label-md text-on-surface-variant">{sourceText(d.paymentSource, d.paidAt)}</p> : null}
+                            {notLaunched ? null : <p className="text-headline-md">{formatMoney(d.amount)}</p>}
+                            {d.status === "Paid" ? <p className="text-label-md text-on-surface-variant">{sourceText(d.paymentSource, d.paidAt)}</p> : null}
+                            {note ? <p className={`text-body-md ${d.status === "Overdue" ? "text-danger-strong" : "text-fg-secondary"}`}>{note}</p> : null}
                           </div>
                           <StatusBadge tone={ob.tone}>{d.status === "Paid" ? "Diária paga" : ob.label}</StatusBadge>
                         </div>
-                        {!settled && !pixOff && open?.key !== key ? (
+                        {payable && !pixOff && open?.key !== key ? (
                           <button
                             type="button"
                             disabled={busyKey === key}
@@ -186,9 +246,14 @@ export default function PagamentosPage() {
                             data-pix-trigger={key}
                             onClick={() => start(key, () => api.createMatchDayPix(d.matchId), d.activePix)}
                           >
-                            {busyKey === key ? "Gerando Pix…" : hasActive ? "Continuar pagamento Pix" : "Pagar Diária via Pix"}
+                            {busyKey === key
+                              ? "Gerando Pix…"
+                              : hasActive
+                                ? "Continuar pagamento Pix"
+                                : `Pagar ${formatMoney(d.amount)} com Pix`}
                           </button>
                         ) : null}
+                        {checkoutFor(key)}
                       </li>
                     );
                   })}
@@ -198,32 +263,6 @@ export default function PagamentosPage() {
           </>
         )}
 
-        {open ? (
-          <div ref={checkoutRef} className="flex scroll-mt-20 flex-col gap-sm">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-headline-md">Pagar com Pix</h2>
-              <button
-                type="button"
-                className={secondaryButton}
-                onClick={() => {
-                  const key = open.key;
-                  setOpen(null);
-                  restore(key);
-                  // Atualiza status e o Pix ativo (o botão passa a "Continuar pagamento Pix").
-                  load().catch(() => undefined);
-                }}
-              >
-                Fechar
-              </button>
-            </div>
-            <PixCheckout
-              key={open.charge.id}
-              initialCharge={open.charge}
-              onRegenerate={open.regenerate}
-              onSettled={() => load().catch(() => undefined)}
-            />
-          </div>
-        ) : null}
       </div>
     </AppShell>
   );

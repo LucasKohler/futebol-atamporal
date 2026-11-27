@@ -69,7 +69,9 @@ public sealed record PlayerMatchFeeDto(
     string Status,
     string PaymentSource,
     DateTimeOffset? PaidAt,
-    PixChargeDto? ActivePix);
+    PixChargeDto? ActivePix,
+    /// <summary>Vencimento (fim do dia do fechamento, fuso do grupo). Nulo = cobrança ainda não lançada no fechamento.</summary>
+    DateTimeOffset? DueAt = null);
 
 public sealed record MyPaymentsDto(
     GatewayStatusDto Gateway,
@@ -97,7 +99,8 @@ public sealed record AdminMatchFeeDto(
     string PaymentSource,
     DateTimeOffset? PaidAt,
     string? Notes,
-    PixChargeSummaryDto? LatestPix);
+    PixChargeSummaryDto? LatestPix,
+    DateTimeOffset? DueAt = null);
 
 public sealed record UpsertMatchFeeRequest(decimal Amount, PaymentStatus Status, string? Notes);
 

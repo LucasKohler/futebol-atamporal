@@ -36,7 +36,7 @@ public class AuthAndHealthTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = CreateClient();
 
-        var login = await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        var login = await TestAuth.LoginAsync(client, "11999999999");
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         Assert.Contains(login.Headers.GetValues("Set-Cookie"), c => c.StartsWith("fa_auth", StringComparison.Ordinal));
 
@@ -57,7 +57,7 @@ public class AuthAndHealthTests : IClassFixture<WebApplicationFactory<Program>>
         var anonymous = await client.GetAsync("/api/groups/current");
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11 99999-9999" });
+        await TestAuth.LoginAsync(client, "11 99999-9999");
         var group = await client.GetAsync("/api/groups/current");
         Assert.Equal(HttpStatusCode.OK, group.StatusCode);
         var json = await group.Content.ReadAsStringAsync();
@@ -69,11 +69,11 @@ public class AuthAndHealthTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = CreateClient();
         var phone = "11988881111";
-        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone, displayName = "Jogador Um" });
+        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone, displayName = "Jogador Um", password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
 
         await client.PostAsync("/api/auth/logout", null);
-        var login = await client.PostAsJsonAsync("/api/auth/login", new { phone = "(11) 98888-1111" });
+        var login = await TestAuth.LoginAsync(client, "(11) 98888-1111");
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var me = await login.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         Assert.Equal("Jogador Um", me.GetProperty("registeredName").GetString());
@@ -84,10 +84,10 @@ public class AuthAndHealthTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Invalid_or_unnormalized_phone_is_rejected()
     {
         var client = CreateClient();
-        var badLogin = await client.PostAsJsonAsync("/api/auth/login", new { phone = "123" });
+        var badLogin = await TestAuth.LoginAsync(client, "123");
         Assert.Equal(HttpStatusCode.Unauthorized, badLogin.StatusCode);
 
-        var badRegister = await client.PostAsJsonAsync("/api/auth/register", new { phone = "abc", displayName = "X" });
+        var badRegister = await client.PostAsJsonAsync("/api/auth/register", new { phone = "abc", displayName = "X", password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.BadRequest, badRegister.StatusCode);
 
         var emailLegacy = await client.PostAsJsonAsync("/api/auth/login", new { email = "admin@futebolatemporal.local", password = "Admin123!" });
@@ -98,13 +98,13 @@ public class AuthAndHealthTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Ddi_and_spacing_variants_match_same_user()
     {
         var client = CreateClient();
-        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11977770001", displayName = "Equivalente" });
+        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11977770001", displayName = "Equivalente", password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
         var first = await reg.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         var id = first.GetProperty("id").GetGuid();
 
         await client.PostAsync("/api/auth/logout", null);
-        var login = await client.PostAsJsonAsync("/api/auth/login", new { phone = "+55 11 97777-0001" });
+        var login = await TestAuth.LoginAsync(client, "+55 11 97777-0001");
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var me = await login.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         Assert.Equal(id, me.GetProperty("id").GetGuid());
@@ -115,7 +115,7 @@ public class AuthAndHealthTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Player_cannot_edit_own_registered_name()
     {
         var client = CreateClient();
-        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11966660001", displayName = "Nome Fixo" });
+        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11966660001", displayName = "Nome Fixo", password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
         var me = await reg.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         var groupId = me.GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
@@ -139,12 +139,12 @@ public class AuthAndHealthTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Nickname_persists_after_reload_and_cookie_still_authenticates()
     {
         var client = CreateClient();
-        var player = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11955550001", displayName = "Carlos Eduardo" });
+        var player = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11955550001", displayName = "Carlos Eduardo", password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, player.StatusCode);
         var playerMe = await player.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         var profileId = playerMe.GetProperty("playerProfileId").GetGuid();
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        await TestAuth.LoginAsync(client, "11999999999");
         var adminMe = await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         var groupId = adminMe.GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
 
@@ -154,13 +154,13 @@ public class AuthAndHealthTests : IClassFixture<WebApplicationFactory<Program>>
         var reload = await client.GetAsync("/api/auth/me");
         Assert.Equal(HttpStatusCode.OK, reload.StatusCode);
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11955550001" });
+        await TestAuth.LoginAsync(client, "11955550001");
         var after = await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         Assert.Equal("Cadu", after.GetProperty("nickname").GetString());
         Assert.Equal("Carlos Eduardo", after.GetProperty("registeredName").GetString());
         Assert.Equal("Cadu", after.GetProperty("displayName").GetString());
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        await TestAuth.LoginAsync(client, "11999999999");
         var players = await (await client.GetAsync($"/api/groups/{groupId}/players")).Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         var row = players.EnumerateArray().First(p => p.GetProperty("playerProfileId").GetGuid() == profileId);
         Assert.Equal("Cadu", row.GetProperty("nickname").GetString());
@@ -171,11 +171,11 @@ public class AuthAndHealthTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Admin_promotes_monthly_member_for_mensalistas()
     {
         var client = CreateClient();
-        var player = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11944440001", displayName = "Mensal Novo" });
+        var player = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11944440001", displayName = "Mensal Novo", password = TestAuth.Password });
         Assert.Equal(HttpStatusCode.OK, player.StatusCode);
         var profileId = (await player.Content.ReadFromJsonAsync<JsonElement>(JsonOptions)).GetProperty("playerProfileId").GetGuid();
 
-        await client.PostAsJsonAsync("/api/auth/login", new { phone = "11999999999" });
+        await TestAuth.LoginAsync(client, "11999999999");
         var groupId = (await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>(JsonOptions))
             .GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
 

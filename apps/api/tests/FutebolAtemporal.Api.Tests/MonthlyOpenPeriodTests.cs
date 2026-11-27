@@ -28,9 +28,9 @@ public class MonthlyOpenPeriodTests : IClassFixture<WebApplicationFactory<Progra
     public async Task Member_added_or_reactivated_after_period_opened_gets_one_pending_charge()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988887001", displayName = "Mensal Tardio" });
+        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988887001", displayName = "Mensal Tardio", password = TestAuth.Password });
         var profileId = (await reg.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("playerProfileId").GetGuid();
-        var login = await client.PostAsJsonAsync("/api/auth/login", new { phone = AdminPhone });
+        var login = await TestAuth.LoginAsync(client, AdminPhone);
         var groupId = (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
 
         var today = GroupToday();
@@ -69,9 +69,9 @@ public class MonthlyOpenPeriodTests : IClassFixture<WebApplicationFactory<Progra
     public async Task Membership_routes_reject_a_group_id_that_does_not_match()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988887002", displayName = "Rota Errada" });
+        var reg = await client.PostAsJsonAsync("/api/auth/register", new { phone = "11988887002", displayName = "Rota Errada", password = TestAuth.Password });
         var profileId = (await reg.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("playerProfileId").GetGuid();
-        var login = await client.PostAsJsonAsync("/api/auth/login", new { phone = AdminPhone });
+        var login = await TestAuth.LoginAsync(client, AdminPhone);
         var groupId = (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
         var add = await client.PostAsJsonAsync($"/api/groups/{groupId}/memberships", new { playerProfileId = profileId });
         var membershipId = (await add.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();

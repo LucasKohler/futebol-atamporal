@@ -29,7 +29,7 @@ export function SavesCounter({
     if (onAdjust) onAdjust(id, delta);
     else onChange?.((prev) => ({ ...prev, [id]: clamp((prev[id] ?? 0) + delta) }));
   };
-  const btn = `flex h-11 w-11 items-center justify-center rounded-full border-2 border-outline text-headline-md disabled:opacity-40 ${focusRing}`;
+  const btn = `flex h-14 w-14 items-center justify-center rounded-full border-2 border-outline text-headline-md disabled:opacity-40 ${focusRing}`;
   return (
     <fieldset className="rounded-lg border border-outline-variant p-sm">
       <legend className="px-1 text-label-md font-semibold">🧤 Goleiro defendeu pênalti?</legend>
