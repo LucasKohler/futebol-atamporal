@@ -1,3 +1,4 @@
+using FutebolAtemporal.Application.Notifications;
 using System.Text.Json;
 using FutebolAtemporal.Application.Draws;
 using FutebolAtemporal.Domain.Entities;
@@ -13,8 +14,13 @@ public sealed class DrawService : IDrawService
 {
     private const int MaxSeedLength = 80;
     private readonly AppDbContext _db;
+    private readonly INotificationTriggerService? _notifications;
 
-    public DrawService(AppDbContext db) => _db = db;
+    public DrawService(AppDbContext db, INotificationTriggerService? notifications = null)
+    {
+        _db = db;
+        _notifications = notifications;
+    }
 
     public async Task<DrawDto> CreateDrawAsync(Guid userId, Guid matchId, string? seed, CancellationToken ct = default)
     {
@@ -119,7 +125,16 @@ public sealed class DrawService : IDrawService
         match.Version++; // duas confirmações simultâneas: a segunda falha por concorrência (409)
         Audit(match, userId, "draw.confirmed", draw.Id, new { seed = draw.Seed });
 
+        if (_notifications is not null)
+        {
+            var assignments = draw.Teams
+                .SelectMany(t => t.Members.Select(m => (m.PlayerProfileId, t.Name)))
+                .ToList();
+            await _notifications.EnqueueDrawPublishedAsync(match.GroupId, match.Id, draw.Id, draw.ConfirmedAt!.Value, assignments, ct);
+        }
+
         await _db.SaveChangesAsync(ct);
+        _notifications?.SignalDispatcher();
         return (await MapAsync(userId, match, drawId, ct))!;
     }
 

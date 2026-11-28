@@ -1,4 +1,4 @@
-﻿using FutebolAtemporal.Domain.Entities;
+using FutebolAtemporal.Domain.Entities;
 using FutebolAtemporal.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -29,6 +29,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<MatchLiveSheet> MatchLiveSheets => Set<MatchLiveSheet>();
     public DbSet<PlayerAward> PlayerAwards => Set<PlayerAward>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
+    public DbSet<NotificationCampaign> NotificationCampaigns => Set<NotificationCampaign>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
+    public DbSet<NotificationCooldown> NotificationCooldowns => Set<NotificationCooldown>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -234,6 +240,77 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasOne(x => x.MembershipPayment).WithMany().HasForeignKey(x => x.MembershipPaymentId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.MatchFeePayment).WithMany().HasForeignKey(x => x.MatchFeePaymentId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.Match).WithMany().HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<UserSession>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.UserId);
+            e.Property(x => x.SecurityStamp).HasMaxLength(256);
+            e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PushSubscription>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Endpoint).IsUnique();
+            e.HasIndex(x => new { x.UserId, x.IsActive });
+            e.HasIndex(x => x.SessionId);
+            e.Property(x => x.Endpoint).HasMaxLength(2048).IsRequired();
+            e.Property(x => x.P256dh).HasMaxLength(256).IsRequired();
+            e.Property(x => x.Auth).HasMaxLength(128).IsRequired();
+            e.Property(x => x.VapidKeyId).HasMaxLength(16).IsRequired();
+            e.Property(x => x.UserAgent).HasMaxLength(256);
+            e.Property(x => x.DeviceLabel).HasMaxLength(60);
+            e.Property(x => x.FailureReason).HasMaxLength(200);
+        });
+
+        builder.Entity<NotificationCampaign>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.GroupId, x.IdempotencyKey }).IsUnique();
+            e.HasIndex(x => new { x.GroupId, x.Source, x.Category, x.CreatedAt });
+            e.Property(x => x.Source).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Category).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Audience).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Title).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Body).HasMaxLength(500).IsRequired();
+            e.Property(x => x.ActionUrl).HasMaxLength(64).IsRequired();
+            e.Property(x => x.IdempotencyKey).HasMaxLength(64);
+            e.Property(x => x.RequestHash).HasMaxLength(64);
+            e.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.GroupId);
+        });
+
+        builder.Entity<UserNotification>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.UserId, x.DedupeKey }).IsUnique();
+            e.HasIndex(x => new { x.UserId, x.GroupId, x.ReadAt });
+            e.HasIndex(x => new { x.PushState, x.NextPushAt });
+            e.Property(x => x.Category).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.PushState).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Title).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Body).HasMaxLength(500).IsRequired();
+            e.Property(x => x.ActionUrl).HasMaxLength(64).IsRequired();
+            e.Property(x => x.DedupeKey).HasMaxLength(200);
+            e.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.GroupId);
+            e.HasOne(x => x.Campaign).WithMany().HasForeignKey(x => x.CampaignId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.DispatchVersion).IsConcurrencyToken();
+        });
+
+        builder.Entity<NotificationCooldown>(e =>
+        {
+            e.HasKey(x => new { x.GroupId, x.Category });
+            e.Property(x => x.Category).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Version).IsConcurrencyToken();
+        });
+
+        builder.Entity<NotificationDelivery>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.NotificationId, x.SubscriptionId }).IsUnique();
+            e.HasOne(x => x.Notification).WithMany().HasForeignKey(x => x.NotificationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Subscription).WithMany().HasForeignKey(x => x.SubscriptionId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<ApplicationUser>(e =>

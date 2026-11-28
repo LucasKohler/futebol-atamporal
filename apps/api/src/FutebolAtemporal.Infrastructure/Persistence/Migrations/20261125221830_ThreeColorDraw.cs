@@ -13,21 +13,18 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "AlgorithmVersion",
                 table: "TeamDraws",
-                type: "TEXT",
                 maxLength: 40,
                 nullable: true);
 
             migrationBuilder.AddColumn<bool>(
                 name: "CanPlayGoalkeeperSnapshot",
                 table: "MatchTeamMembers",
-                type: "INTEGER",
                 nullable: false,
                 defaultValue: false);
 
             migrationBuilder.AddColumn<decimal>(
                 name: "GoalkeeperRatingSnapshot",
                 table: "MatchTeamMembers",
-                type: "TEXT",
                 precision: 4,
                 scale: 2,
                 nullable: true);
@@ -35,7 +32,6 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             migrationBuilder.AddColumn<int>(
                 name: "Role",
                 table: "MatchTeamMembers",
-                type: "INTEGER",
                 nullable: false,
                 defaultValue: 0);
         }

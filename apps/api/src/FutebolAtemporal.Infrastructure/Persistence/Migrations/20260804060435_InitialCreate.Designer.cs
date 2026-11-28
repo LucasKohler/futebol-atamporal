@@ -23,16 +23,13 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.FootballGroup", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(120);
 
                     b.Property<string>("SettingsJson")
                         .IsRequired()
@@ -40,13 +37,11 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Slug")
                         .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(80);
 
                     b.Property<string>("TimeZoneId")
                         .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(80);
 
                     b.HasKey("Id");
 
@@ -59,27 +54,21 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.GroupMembership", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("GroupId");
 
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
                     b.HasKey("Id");
 
@@ -92,30 +81,23 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.PlayerProfile", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<string>("Bio")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(1000);
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
                     b.Property<string>("Phone")
-                        .HasMaxLength(40)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(40);
 
                     b.Property<string>("PhotoUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(500);
 
                     b.Property<decimal>("SkillRating")
-                        .HasPrecision(4, 2)
-                        .HasColumnType("TEXT");
+                        .HasPrecision(4, 2);
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
                     b.HasKey("Id");
 
@@ -128,66 +110,48 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("AccessFailedCount");
 
                     b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("TEXT");
+                        .IsConcurrencyToken();
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(120);
 
                     b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("EmailConfirmed");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("IsActive");
 
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("LockoutEnabled");
 
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("LockoutEnd");
 
                     b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
                     b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("PasswordHash");
 
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("PhoneNumber");
 
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("PhoneNumberConfirmed");
 
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("SecurityStamp");
 
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("TwoFactorEnabled");
 
                     b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
                     b.HasKey("Id");
 
@@ -204,20 +168,16 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("TEXT");
+                        .IsConcurrencyToken();
 
                     b.Property<string>("Name")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
                     b.Property<string>("NormalizedName")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
                     b.HasKey("Id");
 
@@ -231,17 +191,13 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ClaimType");
 
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ClaimValue");
 
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("RoleId");
 
                     b.HasKey("Id");
 
@@ -253,17 +209,13 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ClaimType");
 
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ClaimValue");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
                     b.HasKey("Id");
 
@@ -274,17 +226,13 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("LoginProvider");
 
-                    b.Property<string>("ProviderKey")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ProviderKey");
 
-                    b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ProviderDisplayName");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
@@ -295,11 +243,9 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("RoleId");
 
                     b.HasKey("UserId", "RoleId");
 
@@ -310,17 +256,13 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("LoginProvider");
 
-                    b.Property<string>("Name")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("Name");
 
-                    b.Property<string>("Value")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("Value");
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 

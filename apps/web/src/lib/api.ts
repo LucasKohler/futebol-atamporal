@@ -1,3 +1,5 @@
+import { withAuthCookieLock } from "./authLock";
+
 // Empty = same-origin `/api/*` via Next.js rewrites (reliable cookies in local dev).
 // Set NEXT_PUBLIC_API_URL only when the browser must call the API directly.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -500,12 +502,15 @@ export class ApiError extends Error {
   status: number;
   code: string | null;
   currentVersion: number | null;
-  constructor(message: string, status: number, code: string | null, currentVersion: number | null) {
+  /** 409 reminder_cooldown: segundos até poder repetir o lembrete. */
+  retryAfterSeconds: number | null;
+  constructor(message: string, status: number, code: string | null, currentVersion: number | null, retryAfterSeconds: number | null = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.currentVersion = currentVersion;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -533,19 +538,21 @@ async function parseJson<T>(res: Response): Promise<T> {
     if (res.status === 409) detail = "A lista mudou ao mesmo tempo. Atualize e tente de novo.";
     let code: string | null = null;
     let currentVersion: number | null = null;
+    let retryAfterSeconds: number | null = null;
     try {
       const body = await res.json();
       detail = problemMessage(body, detail);
       if (body && typeof body === "object") {
-        const b = body as { code?: unknown; currentVersion?: unknown };
+        const b = body as { code?: unknown; currentVersion?: unknown; retryAfterSeconds?: unknown };
         if (typeof b.code === "string") code = b.code;
         if (typeof b.currentVersion === "number") currentVersion = b.currentVersion;
+        if (typeof b.retryAfterSeconds === "number") retryAfterSeconds = b.retryAfterSeconds;
       }
     } catch {
       /* corpo vazio ou não JSON */
     }
     // ApiError estende Error: quem só lê `message` continua funcionando.
-    throw new ApiError(detail, res.status, code, currentVersion);
+    throw new ApiError(detail, res.status, code, currentVersion, retryAfterSeconds);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -569,44 +576,48 @@ function send<T>(method: string, path: string, body?: unknown) {
 export const api = {
   /** Telefone + senha (contrato backend 2026-11-27). Erro genérico: não revela se o celular existe. */
   login(phone: string, password: string) {
-    return fetch(url("/api/auth/login"), {
+    // Grava o cookie de sessão: serializado entre abas com o logout (ver authLock).
+    return withAuthCookieLock(() => fetch(url("/api/auth/login"), {
       method: "POST",
       headers: jsonHeaders,
       credentials: "include",
       body: JSON.stringify({ phone, password }),
-    }).then((r) => parseJson<User>(r));
+    }).then((r) => parseJson<User>(r)));
   },
   register(phone: string, displayName: string, password: string) {
-    return fetch(url("/api/auth/register"), {
+    // Grava o cookie de sessão: serializado entre abas com o logout (ver authLock).
+    return withAuthCookieLock(() => fetch(url("/api/auth/register"), {
       method: "POST",
       headers: jsonHeaders,
       credentials: "include",
       body: JSON.stringify({ phone, displayName, password }),
-    }).then((r) => parseJson<User>(r));
+    }).then((r) => parseJson<User>(r)));
   },
   /**
    * Configuração inicial do primeiro admin (uso único): código guardado só no servidor + celular do admin + senha.
    * 200 abre a sessão; depois disso o código deixa de valer (409 setup_already_done).
    */
   adminSetup(setupCode: string, phone: string, password: string) {
-    return fetch(url("/api/auth/admin-setup"), {
+    // Grava o cookie de sessão: serializado entre abas com o logout (ver authLock).
+    return withAuthCookieLock(() => fetch(url("/api/auth/admin-setup"), {
       method: "POST",
       headers: jsonHeaders,
       credentials: "include",
       body: JSON.stringify({ setupCode, phone, password }),
-    }).then((r) => parseJson<User>(r));
+    }).then((r) => parseJson<User>(r)));
   },
   /**
    * Recuperação do único admin (decisão do Lucas): código temporário de uso único definido pelo operador no servidor,
    * válido por no máximo 10 minutos. 200 abre a sessão e encerra as sessões antigas do admin.
    */
   adminRecovery(recoveryCode: string, phone: string, newPassword: string) {
-    return fetch(url("/api/auth/admin-recovery"), {
+    // Grava o cookie de sessão: serializado entre abas com o logout (ver authLock).
+    return withAuthCookieLock(() => fetch(url("/api/auth/admin-recovery"), {
       method: "POST",
       headers: jsonHeaders,
       credentials: "include",
       body: JSON.stringify({ recoveryCode, phone, newPassword }),
-    }).then((r) => parseJson<User>(r));
+    }).then((r) => parseJson<User>(r)));
   },
   /** Recuperação de senha: o admin do grupo define a nova senha do jogador (204, sem corpo). */
   resetPlayerPassword(groupId: string, playerProfileId: string, newPassword: string) {
@@ -617,13 +628,23 @@ export const api = {
       body: JSON.stringify({ newPassword }),
     }).then((r) => parseJson<void>(r));
   },
-  logout() {
-    return fetch(url("/api/auth/logout"), { method: "POST", credentials: "include" }).then((r) =>
-      parseJson<void>(r),
+  /**
+   * Encerra a sessão. Com `expectedUserId`, a API só sai se o cookie ainda for dessa conta; senão responde
+   * 409 `session_changed` e mantém a sessão (outra conta entrou em outra aba).
+   */
+  logout(expectedUserId?: string) {
+    // Serializado entre abas com login/cadastro: a expiração do cookie não pode chegar depois do login de outra conta.
+    return withAuthCookieLock(() =>
+      fetch(url("/api/auth/logout"), {
+        method: "POST",
+        credentials: "include",
+        ...(expectedUserId ? { headers: jsonHeaders, body: JSON.stringify({ expectedUserId }) } : {}),
+      }).then((r) => parseJson<void>(r)),
     );
   },
+  /** Sessão atual. Sem cache: a resposta precisa refletir logout/login recentes (usada para vincular o push à conta). */
   me() {
-    return fetch(url("/api/auth/me"), { credentials: "include" }).then((r) => {
+    return fetch(url("/api/auth/me"), { credentials: "include", cache: "no-store" }).then((r) => {
       if (r.status === 401) return null;
       return parseJson<User>(r);
     });
@@ -1012,4 +1033,146 @@ export const api = {
       parseJson<PixReconcileResult>(r),
     );
   },
+
+  // ---------- Notificações e push (contrato 2026-11-26-contrato-api-pwa-notificacoes.md) ----------
+  /** Anônima. 503 push_not_configured quando o push está desligado no servidor. */
+  vapidPublicKey() {
+    return fetch(url("/api/notifications/vapid-public-key"), { credentials: "include" }).then((r) => parseJson<VapidPublicKey>(r));
+  },
+  /** Insere ou atualiza pelo endpoint; chamar a cada início do app com permissão concedida. */
+  /**
+   * Registra a inscrição para o usuário logado. `expectedUserId` é a conta cuja intenção iniciou a gravação:
+   * a API exige que seja a mesma do cookie e, se não for, responde 409 `session_changed` sem gravar nada.
+   */
+  subscribePush(body: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+    userAgent?: string;
+    deviceLabel?: string;
+    expectedUserId: string;
+  }) {
+    return send<{ id: string; isActive: boolean; keyId: string }>("POST", "/api/notifications/subscriptions", body);
+  },
+  /** 204 mesmo se não existir. */
+  /**
+   * Remove a inscrição do usuário logado. `expectedUserId` é obrigatório: se não for a conta do cookie, a API
+   * responde 409 `session_changed` sem remover nada. 204 também quando não havia inscrição dessa conta.
+   */
+  async unsubscribePush(endpoint: string, expectedUserId: string): Promise<void> {
+    const r = await fetch(url("/api/notifications/subscriptions"), {
+      method: "DELETE",
+      credentials: "include",
+      headers: jsonHeaders,
+      body: JSON.stringify({ endpoint, expectedUserId }),
+    });
+    // Só 204 confirma a remoção. Erros viram ApiError; qualquer outro sucesso (200, 202...) também não confirma.
+    if (r.status === 204) return;
+    await parseJson<unknown>(r);
+    throw new ApiError("O servidor não confirmou a remoção da inscrição.", r.status, "unexpected_status", null);
+  },
+  myNotifications(groupId: string, opts: { before?: string | null; limit?: number } = {}) {
+    const qs = new URLSearchParams({ groupId });
+    if (opts.before) qs.set("before", opts.before);
+    if (opts.limit) qs.set("limit", String(opts.limit));
+    return fetch(url(`/api/notifications/me?${qs}`), { credentials: "include" }).then((r) => parseJson<MyNotifications>(r));
+  },
+  readNotification(id: string) {
+    return send<void>("POST", `/api/notifications/${id}/read`);
+  },
+  readAllNotifications(groupId: string) {
+    return send<{ updated: number }>("POST", "/api/notifications/read-all", { groupId });
+  },
+  adminNotificationSummary(groupId: string) {
+    return fetch(url(`/api/groups/${groupId}/admin/notifications/summary`), { credentials: "include" }).then((r) =>
+      parseJson<AdminNotificationSummary>(r),
+    );
+  },
+  /** Não grava nada: só conta destinatários e aparelhos. */
+  adminNotificationPreview(groupId: string, body: { audience?: string; quick?: QuickReminderKind }) {
+    return send<{ recipients: number; pushDevices: number; matchId: string | null }>("POST", `/api/groups/${groupId}/admin/notifications/preview`, body);
+  },
+  /** Idempotency-Key: o mesmo valor em reenvios (clique duplo) cria uma campanha só. */
+  adminQuickReminder(groupId: string, body: { kind: QuickReminderKind; audience?: "NotResponded" | "AllMembers" }, idempotencyKey: string) {
+    return sendWithKey<NotificationCampaign>("POST", `/api/groups/${groupId}/admin/notifications/quick`, body, idempotencyKey);
+  },
+  adminBroadcast(
+    groupId: string,
+    body: { audience: BroadcastAudience; title: string; body: string; actionUrl: NotificationActionUrl },
+    idempotencyKey: string,
+  ) {
+    return sendWithKey<NotificationCampaign>("POST", `/api/groups/${groupId}/admin/notifications/broadcast`, body, idempotencyKey);
+  },
+  adminCampaigns(groupId: string, page = 1, pageSize = 20) {
+    return fetch(url(`/api/groups/${groupId}/admin/notifications/campaigns?page=${page}&pageSize=${pageSize}`), { credentials: "include" }).then((r) =>
+      parseJson<{ items: NotificationCampaign[]; total: number }>(r),
+    );
+  },
+};
+
+function sendWithKey<T>(method: string, path: string, body: unknown, idempotencyKey: string) {
+  return fetch(url(path), {
+    method,
+    credentials: "include",
+    headers: { ...jsonHeaders, "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify(body),
+  }).then((r) => parseJson<T>(r));
+}
+
+// ---------- Tipos de notificação ----------
+
+export type NotificationActionUrl = "/" | "/partida" | "/pagamentos" | "/rankings" | "/perfil";
+
+/** category: MatchOpen | WaitlistPromoted | DrawPublished | MatchCompleted | RegistrationReminder | PaymentReminder | AdminBroadcast */
+export type AppNotification = {
+  id: string;
+  groupId: string;
+  category: string;
+  title: string;
+  body: string;
+  actionUrl: NotificationActionUrl;
+  matchId: string | null;
+  createdAt: string;
+  readAt: string | null;
+};
+
+export type PushDevice = { id: string; deviceLabel: string | null; createdAt: string; lastSuccessAt: string | null; isActive: boolean; stale: boolean };
+
+export type MyNotifications = {
+  items: AppNotification[];
+  unreadCount: number;
+  nextCursor: string | null;
+  /** mode: "Live" | "Simulator" | "Disabled" */
+  push: { mode: string; keyId: string | null };
+  devices: PushDevice[];
+};
+
+export type VapidPublicKey = { publicKey: string; keyId: string };
+
+export type QuickReminderKind = "RegistrationReminder" | "PaymentReminder" | "MatchAvailable";
+export type BroadcastAudience = "AllMembers" | "MatchConfirmed" | "PaymentPending";
+
+export type AdminNotificationSummary = {
+  membersActive: number;
+  membersWithPush: number;
+  activeDevices: number;
+  sentLast30d: number;
+  pushMode: string;
+  lastCampaignAt: string | null;
+};
+
+export type NotificationCampaign = {
+  id: string;
+  /** "Automatic" | "AdminQuick" | "AdminBroadcast" */
+  source: string;
+  category: string;
+  audience: string;
+  title: string;
+  actionUrl: string;
+  createdAt: string;
+  createdByName: string | null;
+  recipientCount: number;
+  pushDeviceCount: number;
+  /** Aceitos pelo serviço de push ("enviados"); não há confirmação de entrega no aparelho. */
+  pushSentCount: number;
+  pushFailedCount: number;
 };

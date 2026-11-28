@@ -1,4 +1,4 @@
-﻿using FutebolAtemporal.Domain.Enums;
+using FutebolAtemporal.Domain.Enums;
 
 namespace FutebolAtemporal.Domain.Entities;
 
@@ -289,4 +289,101 @@ public class MatchLiveSheet
     public Guid UpdatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+/// <summary>Inscrição Web Push (VAPID) vinculada ao usuário e aparelho (D2).</summary>
+public class PushSubscription
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    /// <summary>
+    /// Sessão de login que gravou a inscrição. Só recebe push enquanto essa sessão vale (não revogada,
+    /// não expirada, mesmo carimbo de segurança). Nulo = sem sessão conhecida = não recebe.
+    /// </summary>
+    public Guid? SessionId { get; set; }
+    public string Endpoint { get; set; } = string.Empty;
+    public string P256dh { get; set; } = string.Empty;
+    public string Auth { get; set; } = string.Empty;
+    public string VapidKeyId { get; set; } = string.Empty;
+    public string? UserAgent { get; set; }
+    public string? DeviceLabel { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset LastSeenAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? LastSuccessAt { get; set; }
+    public int FailureCount { get; set; }
+    public string? FailureReason { get; set; }
+    public DateTimeOffset? DeactivatedAt { get; set; }
+}
+
+/// <summary>Campanha de notificação (automática, lembrete rápido ou comunicado admin).</summary>
+public class NotificationCampaign
+{
+    public Guid Id { get; set; }
+    public Guid GroupId { get; set; }
+    public FootballGroup Group { get; set; } = null!;
+    public NotificationSource Source { get; set; }
+    public NotificationCategory Category { get; set; }
+    public NotificationAudience Audience { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public string ActionUrl { get; set; } = "/";
+    public Guid? MatchId { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public string? IdempotencyKey { get; set; }
+    public string? RequestHash { get; set; }
+    public int RecipientCount { get; set; }
+    public int PushDeviceCount { get; set; }
+    public int PushSentCount { get; set; }
+    public int PushFailedCount { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>Notificação in-app por usuário e grupo, atuando também como outbox de push (D1/D3).</summary>
+public class UserNotification
+{
+    public Guid Id { get; set; }
+    public Guid GroupId { get; set; }
+    public FootballGroup Group { get; set; } = null!;
+    public Guid UserId { get; set; }
+    public Guid CampaignId { get; set; }
+    public NotificationCampaign Campaign { get; set; } = null!;
+    public NotificationCategory Category { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public string ActionUrl { get; set; } = "/";
+    public Guid? MatchId { get; set; }
+    public string? DedupeKey { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ReadAt { get; set; }
+    public NotificationPushState PushState { get; set; } = NotificationPushState.Pending;
+    public int PushAttempts { get; set; }
+    public DateTimeOffset? NextPushAt { get; set; }
+    public int PushSentCount { get; set; }
+    /// <summary>Reserva do envio por um despachante até este instante (evita dois despachantes no mesmo aviso).</summary>
+    public DateTimeOffset? ClaimedUntil { get; set; }
+    /// <summary>Token de concorrência da reserva: só um despachante consegue gravar a reserva.</summary>
+    public int DispatchVersion { get; set; }
+}
+
+/// <summary>
+/// Último lembrete rápido por grupo e categoria. Uma linha por par, com token de concorrência:
+/// garante o intervalo de 30 min também entre várias instâncias da API.
+/// </summary>
+public class NotificationCooldown
+{
+    public Guid GroupId { get; set; }
+    public NotificationCategory Category { get; set; }
+    public DateTimeOffset LastSentAt { get; set; }
+    public int Version { get; set; }
+}
+
+/// <summary>Entrega confirmada de um aviso a uma inscrição: novas tentativas pulam aparelhos já atendidos.</summary>
+public class NotificationDelivery
+{
+    public Guid Id { get; set; }
+    public Guid NotificationId { get; set; }
+    public UserNotification Notification { get; set; } = null!;
+    public Guid SubscriptionId { get; set; }
+    public PushSubscription Subscription { get; set; } = null!;
+    public DateTimeOffset SentAt { get; set; } = DateTimeOffset.UtcNow;
 }

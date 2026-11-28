@@ -14,7 +14,6 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             migrationBuilder.AddColumn<int>(
                 name: "PaymentSource",
                 table: "MembershipPayments",
-                type: "INTEGER",
                 nullable: false,
                 defaultValue: 0);
 
@@ -22,18 +21,18 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "MatchFeePayments",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    GroupId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MatchId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    PlayerProfileId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Amount = table.Column<decimal>(type: "TEXT", precision: 10, scale: 2, nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    PaymentSource = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    PaidAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
-                    RecordedByUserId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    Notes = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(nullable: false),
+                    GroupId = table.Column<Guid>(nullable: false),
+                    MatchId = table.Column<Guid>(nullable: false),
+                    PlayerProfileId = table.Column<Guid>(nullable: false),
+                    Amount = table.Column<decimal>(precision: 10, scale: 2, nullable: false),
+                    Status = table.Column<string>(maxLength: 32, nullable: false),
+                    PaymentSource = table.Column<string>(maxLength: 32, nullable: false),
+                    PaidAt = table.Column<DateTimeOffset>(nullable: true),
+                    RecordedByUserId = table.Column<Guid>(nullable: true),
+                    Notes = table.Column<string>(maxLength: 500, nullable: true),
+                    CreatedAt = table.Column<DateTimeOffset>(nullable: false),
+                    UpdatedAt = table.Column<DateTimeOffset>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -62,26 +61,26 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "PixCharges",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    GroupId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    PlayerProfileId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Kind = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    MembershipPaymentId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    MatchFeePaymentId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    MatchId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    Amount = table.Column<decimal>(type: "TEXT", precision: 10, scale: 2, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
-                    MpPaymentId = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    IdempotencyKey = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
+                    Id = table.Column<Guid>(nullable: false),
+                    GroupId = table.Column<Guid>(nullable: false),
+                    PlayerProfileId = table.Column<Guid>(nullable: false),
+                    Kind = table.Column<string>(maxLength: 32, nullable: false),
+                    MembershipPaymentId = table.Column<Guid>(nullable: true),
+                    MatchFeePaymentId = table.Column<Guid>(nullable: true),
+                    MatchId = table.Column<Guid>(nullable: true),
+                    Amount = table.Column<decimal>(precision: 10, scale: 2, nullable: false),
+                    Description = table.Column<string>(maxLength: 200, nullable: false),
+                    MpPaymentId = table.Column<string>(maxLength: 80, nullable: false),
+                    IdempotencyKey = table.Column<string>(maxLength: 64, nullable: false),
                     QrCode = table.Column<string>(type: "text", nullable: false),
                     QrCodeBase64 = table.Column<string>(type: "text", nullable: true),
-                    ExpiresAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    ProviderStatus = table.Column<string>(type: "TEXT", maxLength: 40, nullable: true),
-                    IsSimulated = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    ApprovedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true)
+                    ExpiresAt = table.Column<DateTimeOffset>(nullable: false),
+                    Status = table.Column<string>(maxLength: 32, nullable: false),
+                    ProviderStatus = table.Column<string>(maxLength: 40, nullable: true),
+                    IsSimulated = table.Column<bool>(nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(nullable: false),
+                    UpdatedAt = table.Column<DateTimeOffset>(nullable: false),
+                    ApprovedAt = table.Column<DateTimeOffset>(nullable: true)
                 },
                 constraints: table =>
                 {

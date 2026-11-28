@@ -45,8 +45,8 @@ describe("AdminModuleRegistry", () => {
   });
 
   it("ordena por grupo (rodada, pessoas, financeiro) e ordem interna; grupos vazios somem", () => {
-    expect(sortAdminModules(ADMIN_MODULES).map((m) => m.id)).toEqual(["lista", "sorteio", "registro", "elenco", "mensalidades"]);
-    expect(groupAdminModules(ADMIN_MODULES).map((s) => s.group)).toEqual(["rodada", "pessoas", "financeiro"]);
+    expect(sortAdminModules(ADMIN_MODULES).map((m) => m.id)).toEqual(["lista", "sorteio", "registro", "elenco", "mensalidades", "notificacoes"]);
+    expect(groupAdminModules(ADMIN_MODULES).map((s) => s.group)).toEqual(["rodada", "pessoas", "financeiro", "grupo"]);
   });
 
   it("item Admin da navegação fica ativo em qualquer rota /admin*", () => {

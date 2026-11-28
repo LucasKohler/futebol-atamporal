@@ -16,7 +16,6 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "Nickname",
                 table: "AspNetUsers",
-                type: "TEXT",
                 maxLength: 80,
                 nullable: true);
         }

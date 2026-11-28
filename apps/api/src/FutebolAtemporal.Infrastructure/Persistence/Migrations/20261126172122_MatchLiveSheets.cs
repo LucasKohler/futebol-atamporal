@@ -15,13 +15,13 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "MatchLiveSheets",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MatchId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    SheetJson = table.Column<string>(type: "TEXT", nullable: false),
-                    Version = table.Column<int>(type: "INTEGER", nullable: false),
-                    UpdatedByUserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(nullable: false),
+                    MatchId = table.Column<Guid>(nullable: false),
+                    SheetJson = table.Column<string>(nullable: false),
+                    Version = table.Column<int>(nullable: false),
+                    UpdatedByUserId = table.Column<Guid>(nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(nullable: false),
+                    UpdatedAt = table.Column<DateTimeOffset>(nullable: false)
                 },
                 constraints: table =>
                 {

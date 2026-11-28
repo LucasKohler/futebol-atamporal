@@ -69,9 +69,11 @@ file sealed class AppExceptionHandler : IExceptionHandler
     {
         var (status, title, code, extensions) = exception switch
         {
-            ForbiddenException => (StatusCodes.Status403Forbidden, "Sem permissão", (string?)null, (IReadOnlyDictionary<string, object?>?)null),
+            ForbiddenException => (StatusCodes.Status403Forbidden, "Sem permissão", (string?)"forbidden", (IReadOnlyDictionary<string, object?>?)null),
             NotFoundException nf => (StatusCodes.Status404NotFound, "Não encontrado", nf.Code, (IReadOnlyDictionary<string, object?>?)null),
             ConflictException cf => (StatusCodes.Status409Conflict, "Conflito de estado", cf.Code, cf.Extensions),
+            UnprocessableEntityException ue => (StatusCodes.Status422UnprocessableEntity, "Entidade não processável", ue.Code, ue.Extensions),
+            ServiceUnavailableException su => (StatusCodes.Status503ServiceUnavailable, "Serviço indisponível", su.Code, (IReadOnlyDictionary<string, object?>?)null),
             DomainException de => (StatusCodes.Status400BadRequest, "Regra de negócio", de.Code, de.Extensions),
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "Conflito de atualização", "live_version_conflict", (IReadOnlyDictionary<string, object?>?)null),
             _ => (0, null, null, null)

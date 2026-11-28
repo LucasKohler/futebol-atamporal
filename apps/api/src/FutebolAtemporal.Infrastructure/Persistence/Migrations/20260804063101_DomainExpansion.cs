@@ -15,14 +15,14 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "AuditEntries",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    GroupId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    ActorUserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Action = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    EntityType = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    EntityId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    Id = table.Column<Guid>(nullable: false),
+                    GroupId = table.Column<Guid>(nullable: false),
+                    ActorUserId = table.Column<Guid>(nullable: false),
+                    Action = table.Column<string>(maxLength: 80, nullable: false),
+                    EntityType = table.Column<string>(maxLength: 80, nullable: false),
+                    EntityId = table.Column<Guid>(nullable: true),
                     PayloadJson = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    CreatedAt = table.Column<DateTimeOffset>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -33,17 +33,17 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "Matches",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    GroupId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Title = table.Column<string>(type: "TEXT", maxLength: 160, nullable: true),
-                    StartsAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    Location = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
-                    PlayerLimit = table.Column<int>(type: "INTEGER", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    Notes = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true),
-                    Version = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(nullable: false),
+                    GroupId = table.Column<Guid>(nullable: false),
+                    Title = table.Column<string>(maxLength: 160, nullable: true),
+                    StartsAt = table.Column<DateTimeOffset>(nullable: false),
+                    Location = table.Column<string>(maxLength: 200, nullable: false),
+                    PlayerLimit = table.Column<int>(nullable: false),
+                    Status = table.Column<string>(maxLength: 32, nullable: false),
+                    Notes = table.Column<string>(maxLength: 2000, nullable: true),
+                    Version = table.Column<int>(nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(nullable: false),
+                    UpdatedAt = table.Column<DateTimeOffset>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -60,11 +60,11 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "MembershipBillingPeriods",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    GroupId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Year = table.Column<int>(type: "INTEGER", nullable: false),
-                    Month = table.Column<int>(type: "INTEGER", nullable: false),
-                    Label = table.Column<string>(type: "TEXT", maxLength: 40, nullable: false)
+                    Id = table.Column<Guid>(nullable: false),
+                    GroupId = table.Column<Guid>(nullable: false),
+                    Year = table.Column<int>(nullable: false),
+                    Month = table.Column<int>(nullable: false),
+                    Label = table.Column<string>(maxLength: 40, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -81,12 +81,12 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "MonthlyMemberships",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    GroupId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    PlayerProfileId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    StartedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    EndedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(nullable: false),
+                    GroupId = table.Column<Guid>(nullable: false),
+                    PlayerProfileId = table.Column<Guid>(nullable: false),
+                    Status = table.Column<string>(maxLength: 32, nullable: false),
+                    StartedAt = table.Column<DateTimeOffset>(nullable: false),
+                    EndedAt = table.Column<DateTimeOffset>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -109,16 +109,16 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "MatchRegistrations",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MatchId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    PlayerProfileId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    PriorityClass = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    WaitlistPosition = table.Column<int>(type: "INTEGER", nullable: true),
-                    ConfirmedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
-                    WithdrawnAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(nullable: false),
+                    MatchId = table.Column<Guid>(nullable: false),
+                    PlayerProfileId = table.Column<Guid>(nullable: false),
+                    Status = table.Column<string>(maxLength: 32, nullable: false),
+                    PriorityClass = table.Column<string>(maxLength: 32, nullable: false),
+                    WaitlistPosition = table.Column<int>(nullable: true),
+                    ConfirmedAt = table.Column<DateTimeOffset>(nullable: true),
+                    WithdrawnAt = table.Column<DateTimeOffset>(nullable: true),
+                    CreatedAt = table.Column<DateTimeOffset>(nullable: false),
+                    UpdatedAt = table.Column<DateTimeOffset>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -141,14 +141,14 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "MatchResults",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MatchId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    HomeScore = table.Column<int>(type: "INTEGER", nullable: false),
-                    AwayScore = table.Column<int>(type: "INTEGER", nullable: false),
-                    WinnerTeamId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    Notes = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true),
-                    ClosedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    ClosedByUserId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(nullable: false),
+                    MatchId = table.Column<Guid>(nullable: false),
+                    HomeScore = table.Column<int>(nullable: false),
+                    AwayScore = table.Column<int>(nullable: false),
+                    WinnerTeamId = table.Column<Guid>(nullable: true),
+                    Notes = table.Column<string>(maxLength: 2000, nullable: true),
+                    ClosedAt = table.Column<DateTimeOffset>(nullable: false),
+                    ClosedByUserId = table.Column<Guid>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -165,11 +165,11 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "PlayerAwards",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MatchId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    PlayerProfileId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Type = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    AwardedByUserId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(nullable: false),
+                    MatchId = table.Column<Guid>(nullable: false),
+                    PlayerProfileId = table.Column<Guid>(nullable: false),
+                    Type = table.Column<string>(maxLength: 32, nullable: false),
+                    AwardedByUserId = table.Column<Guid>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -192,13 +192,13 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "PlayerMatchRatings",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MatchId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    PlayerProfileId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Score = table.Column<decimal>(type: "TEXT", precision: 4, scale: 2, nullable: false),
-                    RatedByUserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Notes = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: true),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(nullable: false),
+                    MatchId = table.Column<Guid>(nullable: false),
+                    PlayerProfileId = table.Column<Guid>(nullable: false),
+                    Score = table.Column<decimal>(precision: 4, scale: 2, nullable: false),
+                    RatedByUserId = table.Column<Guid>(nullable: false),
+                    Notes = table.Column<string>(maxLength: 1000, nullable: true),
+                    CreatedAt = table.Column<DateTimeOffset>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -221,14 +221,14 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "TeamDraws",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MatchId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Seed = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    TeamCount = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedByUserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    ConfirmedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(nullable: false),
+                    MatchId = table.Column<Guid>(nullable: false),
+                    Seed = table.Column<string>(maxLength: 80, nullable: false),
+                    Status = table.Column<string>(maxLength: 32, nullable: false),
+                    TeamCount = table.Column<int>(nullable: false),
+                    CreatedByUserId = table.Column<Guid>(nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(nullable: false),
+                    ConfirmedAt = table.Column<DateTimeOffset>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -245,16 +245,16 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "MembershipPayments",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MonthlyMembershipId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    BillingPeriodId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Amount = table.Column<decimal>(type: "TEXT", precision: 10, scale: 2, nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
-                    PaidAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
-                    Notes = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: true),
-                    RecordedByUserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(nullable: false),
+                    MonthlyMembershipId = table.Column<Guid>(nullable: false),
+                    BillingPeriodId = table.Column<Guid>(nullable: false),
+                    Amount = table.Column<decimal>(precision: 10, scale: 2, nullable: false),
+                    Status = table.Column<string>(maxLength: 32, nullable: false),
+                    PaidAt = table.Column<DateTimeOffset>(nullable: true),
+                    Notes = table.Column<string>(maxLength: 1000, nullable: true),
+                    RecordedByUserId = table.Column<Guid>(nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(nullable: false),
+                    UpdatedAt = table.Column<DateTimeOffset>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -277,10 +277,10 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "MatchTeams",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    TeamDrawId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 40, nullable: false),
-                    SortOrder = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<Guid>(nullable: false),
+                    TeamDrawId = table.Column<Guid>(nullable: false),
+                    Name = table.Column<string>(maxLength: 40, nullable: false),
+                    SortOrder = table.Column<int>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -297,10 +297,10 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                 name: "MatchTeamMembers",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MatchTeamId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    PlayerProfileId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    SkillRatingSnapshot = table.Column<decimal>(type: "TEXT", precision: 4, scale: 2, nullable: false)
+                    Id = table.Column<Guid>(nullable: false),
+                    MatchTeamId = table.Column<Guid>(nullable: false),
+                    PlayerProfileId = table.Column<Guid>(nullable: false),
+                    SkillRatingSnapshot = table.Column<decimal>(precision: 4, scale: 2, nullable: false)
                 },
                 constraints: table =>
                 {

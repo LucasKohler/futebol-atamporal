@@ -14,7 +14,6 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             migrationBuilder.AddColumn<DateTimeOffset>(
                 name: "DueAt",
                 table: "MatchFeePayments",
-                type: "TEXT",
                 nullable: true);
         }
 

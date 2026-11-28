@@ -309,7 +309,12 @@ public sealed class AuthService : IAuthService
 
     public async Task LogoutAsync(CancellationToken ct = default)
     {
-        await _signInManager.SignOutAsync();
+        // Revoga a sessão no servidor e NÃO envia Set-Cookie de remoção: se outra aba já instalou o cookie
+        // de outra conta, uma resposta de logout atrasada não o apaga. O cookie revogado que ficar no
+        // navegador deixa de autenticar (401) e é substituído no próximo login.
+        var principal = _httpContextAccessor.HttpContext?.User;
+        if (principal is not null)
+            await SessionCookieEvents.RevokeAsync(_db, principal, ct);
     }
 
     public async Task<UserDto?> GetCurrentUserAsync(CancellationToken ct = default)

@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { InstallAppBanner } from "@/components/pwa/InstallAppBanner";
+import { isNavActive } from "@/lib/adminModules";
+import { api } from "@/lib/api";
+import { takeNotificationParam } from "@/lib/notifications";
+import { useSession } from "@/lib/useSession";
 
 const links = [
   { href: "/", label: "Início", icon: "home" },
@@ -37,20 +44,34 @@ export function AppShell({
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
+  // A barra inferior é a mesma para todos (decisão de design); o admin chega à Central pela Home e por "Gerenciar rodada".
+  const { user, group } = useSession(false);
+  const navLinks = links;
+
+  // Aberto pelo toque num push: ?n={id} marca o aviso como lido e sai da URL (contrato D7).
+  useEffect(() => {
+    if (!user) return;
+    const { id, cleanUrl } = takeNotificationParam(window.location.href);
+    if (!id) return;
+    window.history.replaceState(null, "", cleanUrl);
+    api.readNotification(id).catch(() => undefined);
+  }, [user, pathname]);
 
   return (
     <div className="min-h-dvh bg-background text-on-background">
       <header className="sticky top-0 z-30 border-b border-outline-variant bg-background">
-        <div className="mx-auto flex max-w-container items-center justify-between px-page-mobile py-3 md:px-page-desktop">
+        <div className="mx-auto flex max-w-container items-center justify-between px-page-mobile py-2 md:px-page-desktop">
           <div className="flex items-center gap-2 text-primary">
             <NavIcon name="sports_soccer" />
             <span className="text-headline-md font-semibold">{brand}</span>
           </div>
+          {user && group ? <NotificationBell groupId={group.id} /> : null}
         </div>
       </header>
 
       {/* A navegação inferior é fixa em todas as larguras: a folga evita que ela cubra o último botão da página. */}
       <main className="mx-auto max-w-container px-page-mobile pb-28 pt-lg md:px-page-desktop">
+        {user && pathname !== "/perfil" ? <InstallAppBanner /> : null}
         {children}
       </main>
 
@@ -59,13 +80,14 @@ export function AppShell({
         aria-label="Principal"
       >
         <ul className="mx-auto flex max-w-lg items-stretch justify-around px-2 py-2">
-          {links.map((link) => {
-            const active = pathname === link.href;
+          {navLinks.map((link) => {
+            const active = isNavActive(pathname, link.href);
             return (
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className={`flex min-w-[4.5rem] flex-col items-center gap-1 rounded-full px-3 py-2 text-label-sm uppercase ${
+                  aria-current={active ? "page" : undefined}
+                  className={`flex min-h-11 min-w-[3.75rem] flex-col items-center gap-1 rounded-full px-2 py-2 text-label-sm uppercase focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch-green-container sm:min-w-[4.5rem] sm:px-3 ${
                     active ? "bg-pitch-green-container text-on-primary" : "text-on-surface-variant"
                   }`}
                 >

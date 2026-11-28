@@ -13,14 +13,12 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             migrationBuilder.AddColumn<bool>(
                 name: "CanPlayGoalkeeper",
                 table: "PlayerProfiles",
-                type: "INTEGER",
                 nullable: false,
                 defaultValue: false);
 
             migrationBuilder.AddColumn<decimal>(
                 name: "GoalkeeperRating",
                 table: "PlayerProfiles",
-                type: "TEXT",
                 precision: 4,
                 scale: 2,
                 nullable: true);

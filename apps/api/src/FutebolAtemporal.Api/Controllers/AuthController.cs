@@ -57,8 +57,15 @@ public sealed class AuthController : ControllerBase
 
     [HttpPost("logout")]
     [Authorize]
-    public async Task<IActionResult> Logout(CancellationToken ct)
+    public async Task<IActionResult> Logout(
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] LogoutRequest? body,
+        CancellationToken ct)
     {
+        // Sem corpo ou sem expectedUserId: logout incondicional (clientes antigos).
+        // Com expectedUserId: uma aba desatualizada da conta A não encerra a sessão vigente da conta B.
+        if (body?.ExpectedUserId is not null && !SessionPrecondition.Matches(User, body.ExpectedUserId))
+            return this.SessionChanged();
+
         await _auth.LogoutAsync(ct);
         return NoContent();
     }

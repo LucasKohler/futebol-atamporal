@@ -1,4 +1,4 @@
-﻿namespace FutebolAtemporal.Domain.Exceptions;
+namespace FutebolAtemporal.Domain.Exceptions;
 
 public class DomainException : Exception
 {
@@ -37,5 +37,26 @@ public class ConflictException : Exception
     {
         Code = code;
         Extensions = extensions;
+    }
+}
+public class UnprocessableEntityException : Exception
+{
+    public string? Code { get; }
+    public IReadOnlyDictionary<string, object?>? Extensions { get; }
+
+    public UnprocessableEntityException(string message, string? code = null, IReadOnlyDictionary<string, object?>? extensions = null)
+        : base(message)
+    {
+        Code = code;
+        Extensions = extensions;
+    }
+}
+
+public class ServiceUnavailableException : Exception
+{
+    public string? Code { get; }
+    public ServiceUnavailableException(string message, string? code = null) : base(message)
+    {
+        Code = code;
     }
 }
