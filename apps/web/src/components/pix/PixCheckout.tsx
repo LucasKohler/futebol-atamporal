@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { focusRing, primaryButton, secondaryButton } from "@/components/admin/ui";
 import { formatMoney } from "@/lib/adminFilters";
 import { api, PixCharge } from "@/lib/api";
-import { canVerify, checkoutPhase, formatCountdown, PIX_POLL_MS, PIX_VERIFY_COOLDOWN_MS, remainingMs, shouldPoll } from "@/lib/pix";
+import { canVerify, checkoutPhase, formatCountdown, PIX_POLL_MS, pixEndTone, PIX_VERIFY_COOLDOWN_MS, remainingMs, shouldPoll } from "@/lib/pix";
 
 /**
  * Checkout transparente Pix: copia e cola em destaque, QR Code, contador até expirar,
@@ -171,9 +171,15 @@ export function PixCheckout({
         tabIndex={-1}
         role="status"
         aria-live="polite"
-        className={`rounded-xl border-2 border-green-700 bg-green-50 p-md text-green-900 ${focusRing}`}
+        className={`rounded-xl border-2 border-success bg-success-bg p-md text-success transition-colors duration-celebrate ease-standard ${focusRing}`}
       >
-        <p className="text-headline-md">✓ Pagamento confirmado!</p>
+        {/* 07e: o check se desenha (duration-celebrate). Fica aberto até a pessoa agir (decisão 27/11). */}
+        <p className="flex items-center gap-2 text-headline-md">
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-7 w-7 shrink-0" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12.5l4.5 4.5L19 7.5" strokeDasharray="24" className="animate-check-draw" />
+          </svg>
+          Pagamento confirmado!
+        </p>
         <p className="mt-1 text-body-md">
           {formatMoney(charge.amount)} · {charge.description}
           {charge.approvedAt ? ` · ${new Date(charge.approvedAt).toLocaleString("pt-BR")}` : ""}
@@ -196,7 +202,7 @@ export function PixCheckout({
         <p className="text-body-md text-on-surface-variant">{charge.description}</p>
       </div>
       {charge.isSimulated ? (
-        <p className="rounded-lg border border-amber-700 bg-amber-50 p-2 text-label-md text-amber-900">Modo de teste: este Pix é simulado e não cobra dinheiro.</p>
+        <p className="rounded-lg border border-warning bg-warning-subtle p-2 text-label-md text-warning-strong">Modo de teste: este Pix é simulado e não cobra dinheiro.</p>
       ) : null}
 
       {phase === "pending" ? (
@@ -207,7 +213,7 @@ export function PixCheckout({
           <button type="button" onClick={copy} disabled={!charge.qrCode} className={`${primaryButton} min-h-14 w-full text-body-lg`}>
             Copiar código Pix (Copia e Cola)
           </button>
-          <p aria-live="polite" className="min-h-5 text-label-md text-green-900">
+          <p aria-live="polite" className="min-h-5 text-label-md text-success">
             {copied ?? ""}
           </p>
           <label className="flex flex-col gap-1 text-label-md">
@@ -236,6 +242,7 @@ export function PixCheckout({
           ) : null}
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={verify} disabled={busy || verifyLocked} className={secondaryButton}>
+              {busy ? <VerifyingDot /> : null}
               {verifyLocked ? "Verificando… aguarde alguns segundos" : "Já paguei / Verificar agora"}
             </button>
             {allowSimulate && charge.isSimulated ? (
@@ -250,8 +257,21 @@ export function PixCheckout({
           </p>
         </>
       ) : (
-        <div role="alert" className="flex flex-col gap-2 rounded-lg border border-amber-700 bg-amber-50 p-3 text-amber-900">
-          <p className="font-semibold">{phase === "cancelled" ? "Este código Pix foi cancelado." : "Este código Pix expirou."}</p>
+        // 07e: "Cancelado" em tom neutro; "Expirou" continua âmbar. Os dois mantêm "Gerar novo código" e "Verificar"
+        // (decisão do Lucas 27/11), para quem pagou antes do cancelamento/expiração.
+        <div
+          role="alert"
+          data-phase={phase}
+          className={`flex flex-col gap-2 rounded-lg border p-3 ${
+            pixEndTone(phase === "cancelled" ? "cancelled" : "expired") === "neutral"
+              ? "border-line-control bg-subtle text-fg"
+              : "border-warning bg-warning-subtle text-warning-strong"
+          }`}
+        >
+          <p className="flex items-center gap-2 font-semibold">
+            <span aria-hidden="true">{phase === "cancelled" ? "⊘" : "⏱"}</span>
+            {phase === "cancelled" ? "Este código Pix foi cancelado." : "Este código Pix expirou."}
+          </p>
           <p className="text-body-md">Se você já pagou, toque em verificar. Senão, gere um novo código.</p>
           <div className="flex flex-wrap gap-2">
             {onRegenerate ? (
@@ -260,6 +280,7 @@ export function PixCheckout({
               </button>
             ) : null}
             <button type="button" onClick={verify} disabled={busy || verifyLocked} className={secondaryButton}>
+              {busy ? <VerifyingDot /> : null}
               Já paguei / Verificar
             </button>
           </div>
@@ -278,4 +299,9 @@ export function PixCheckout({
       ) : null}
     </section>
   );
+}
+
+/** Ponto pulsando só enquanto verifica (1 s por ciclo). Com menos movimento fica parado; o texto segue visível. */
+function VerifyingDot() {
+  return <span aria-hidden="true" className="inline-block h-2 w-2 animate-dot-pulse rounded-full bg-current" />;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { TabRail } from "@/components/TabRail";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { api, RankingRow, Scorer, SeasonStats } from "@/lib/api";
@@ -74,26 +75,19 @@ export default function RankingsPage() {
         </label>
       </div>
 
-      <div role="tablist" aria-label="Rankings" className="mt-md flex flex-wrap gap-2">
-        {(
-          [
-            ["artilharia", "Artilharia"],
-            ["cores", "Cores e rodadas"],
-            ["jogadores", "Jogadores e prêmios"],
-            ["geral", "Geral (histórico)"],
-          ] as [Tab, string][]
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-            className={`min-h-11 rounded-full px-3 py-1.5 text-label-md ${focusRing} ${tab === key ? "bg-pitch-green-container text-on-primary" : "border border-outline"}`}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Uma fileira só (antes quebrava em duas); rola na horizontal com sinal na borda. */}
+      <div className="mt-md">
+        <TabRail
+          label="Rankings"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: "artilharia", label: "Artilharia" },
+            { id: "cores", label: "Cores e rodadas" },
+            { id: "jogadores", label: "Jogadores e prêmios" },
+            { id: "geral", label: "Geral (histórico)" },
+          ]}
+        />
       </div>
 
       {msg ? (

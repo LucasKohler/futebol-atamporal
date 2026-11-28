@@ -233,9 +233,9 @@ export default function RegistroPage() {
           value={tab}
           onChange={setTab}
           tabs={[
-            { id: "live", label: "1 · Ao vivo", badge: live ? `(#${live.order})` : undefined },
-            { id: "check", label: "2 · Checagem do dia", badge: `(${day.games.length})` },
-            { id: "close", label: "3 · Fim & melhores" },
+            { id: "live", label: "Ao vivo", badge: live ? `(#${live.order})` : undefined },
+            { id: "check", label: "Checagem", badge: `(${day.games.length})` },
+            { id: "close", label: "Fim & melhores" },
           ]}
         >
           {tab === "live" ? (

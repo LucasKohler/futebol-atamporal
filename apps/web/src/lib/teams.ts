@@ -8,17 +8,20 @@ export type TeamStyle = {
   /** Classes literais para o Tailwind detectar. */
   swatch: string;
   border: string;
+  /** Cor do time como variável CSS (pulso da borda no gol). */
+  cssColor: string;
 };
 
+/** Tokens do DS `team-*` (mesmos valores de antes). */
 const STYLES: Record<string, TeamStyle> = {
-  Vermelho: { label: "Vermelho", emoji: "🔴", swatch: "bg-red-600", border: "border-red-600" },
-  Preto: { label: "Preto", emoji: "⚫", swatch: "bg-neutral-900", border: "border-neutral-900" },
-  Verde: { label: "Verde", emoji: "🟢", swatch: "bg-green-600", border: "border-green-600" },
+  Vermelho: { label: "Vermelho", emoji: "🔴", swatch: "bg-team-red", border: "border-team-red", cssColor: "var(--team-red)" },
+  Preto: { label: "Preto", emoji: "⚫", swatch: "bg-team-black", border: "border-team-black", cssColor: "var(--team-black)" },
+  Verde: { label: "Verde", emoji: "🟢", swatch: "bg-team-green", border: "border-team-green", cssColor: "var(--team-green)" },
 };
 
 /** Estilo do time; sorteios antigos (Time A/B, sem cor) usam estilo neutro com o nome original. */
 export function teamStyle(team: Pick<DrawTeam, "color" | "name">): TeamStyle {
-  return (team.color && STYLES[team.color]) || { label: team.name, emoji: "⚪", swatch: "bg-outline", border: "border-outline" };
+  return (team.color && STYLES[team.color]) || { label: team.name, emoji: "⚪", swatch: "bg-outline", border: "border-outline", cssColor: "var(--border-control)" };
 }
 
 /** Espelha RegistrationPolicy.IsLineupFrozen da API: partida iniciada ou aguardando fechamento. */

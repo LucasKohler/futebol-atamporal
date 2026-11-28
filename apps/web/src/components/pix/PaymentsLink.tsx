@@ -6,7 +6,7 @@ export function PaymentsLink({ text = "Mensalidade e diárias da pelada. Pague c
   return (
     <Link
       href="/pagamentos"
-      className={`flex min-h-11 items-center justify-between gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-md hover:border-pitch-green-container ${focusRing}`}
+      className={`flex min-h-11 items-center justify-between gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-md shadow-elevation-1 transition-shadow duration-instant ease-standard hover:border-pitch-green-container active:shadow-elevation-0 ${focusRing}`}
     >
       <span>
         <span className="block text-body-lg font-semibold">Pagamentos & Pix</span>

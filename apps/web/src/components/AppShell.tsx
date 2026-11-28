@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useScrollEdges } from "./useScrollEdges";
 
 const links = [
   { href: "/", label: "Início", icon: "home" },
@@ -37,6 +38,7 @@ export function AppShell({
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
+  const edges = useScrollEdges();
 
   return (
     <div className="min-h-dvh bg-background text-on-background">
@@ -55,7 +57,8 @@ export function AppShell({
       </main>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-outline-variant bg-surface-container-lowest"
+        // elevation-bar só quando há conteúdo rolando por baixo (regra 27/11).
+        className={`fixed inset-x-0 bottom-0 z-30 border-t border-outline-variant bg-surface-container-lowest transition-shadow duration-base ease-standard ${edges.contentBelow ? "shadow-elevation-bar" : ""}`}
         aria-label="Principal"
       >
         <ul className="mx-auto flex max-w-lg items-stretch justify-around px-2 py-2">

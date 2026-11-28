@@ -187,3 +187,11 @@ export function paidBySource(payments: { status: string; paymentSource?: Payment
   }
   return r;
 }
+
+/**
+ * Tom do fim do código (07e, decisão 27/11): "Cancelado" neutro e "Expirou" âmbar, para se distinguirem
+ * à primeira vista. As ações (gerar novo código e verificar) são as mesmas nos dois.
+ */
+export function pixEndTone(phase: "cancelled" | "expired"): "neutral" | "warning" {
+  return phase === "cancelled" ? "neutral" : "warning";
+}

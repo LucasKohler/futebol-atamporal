@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AdminEmpty, AdminError, AdminLoading, StatusBadge, type BadgeTone } from "@/components/admin/AdminCard";
-import { focusRing, primaryButton, secondaryButton } from "@/components/admin/ui";
+import { focusRing, primaryButton } from "@/components/admin/ui";
 import { PixCheckout } from "@/components/pix/PixCheckout";
+import { Sheet } from "@/components/Sheet";
 import { usePixFocusReturn } from "@/components/pix/usePixFocusReturn";
 import { formatMoney } from "@/lib/adminFilters";
 import { api, MyMatchDayPayment, MyPayments, PixCharge, type PaymentSource } from "@/lib/api";
 import { dueAtText, isLaunchedOpenFee, isSettled, matchFeeBadge } from "@/lib/pix";
+import { createCheckoutSessions } from "@/lib/pixCheckoutSession";
 import { monthName } from "@/lib/season";
 import { useSession } from "@/lib/useSession";
 
@@ -53,7 +55,6 @@ export default function PagamentosPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [open, setOpen] = useState<Open | null>(null);
-  const checkoutRef = useRef<HTMLDivElement>(null);
   const { remember, restore } = usePixFocusReturn();
 
   const load = useCallback(async () => {
@@ -79,30 +80,20 @@ export default function PagamentosPage() {
     if (d && isLaunchedOpenFee(d) && !off) start(`d:${d.matchId}`, () => api.createMatchDayPix(d.matchId), d.activePix);
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (open) checkoutRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-  }, [open?.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Sessões do checkout: fechar ou abrir outro invalida respostas tardias (ver pixCheckoutSession).
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  const sessions = useRef<ReturnType<typeof createCheckoutSessions> | null>(null);
+  sessions.current ??= createCheckoutSessions({
+    open: (o) => setOpen(o),
+    setBusy: (update) => setBusyKey(update),
+    setError: (msg) => setActionError(msg),
+    reload: () => loadRef.current(),
+  });
 
-  async function start(key: string, create: () => Promise<PixCharge>, existing: PixCharge | null) {
-    setActionError(null);
+  function start(key: string, create: () => Promise<PixCharge>, existing: PixCharge | null) {
     remember(); // gatilho atual; volta a ele ao fechar o checkout
-    const regenerate = async () => {
-      const charge = await create();
-      setOpen({ key, charge, regenerate });
-    };
-    if (existing && existing.status === "Pending" && Date.parse(existing.expiresAt) > Date.now()) {
-      setOpen({ key, charge: existing, regenerate });
-      return;
-    }
-    setBusyKey(key);
-    try {
-      await regenerate();
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Não foi possível gerar o Pix.");
-      await load().catch(() => undefined); // ex.: 409 já pago: atualiza a lista
-    } finally {
-      setBusyKey(null);
-    }
+    return sessions.current!.start(key, create, existing);
   }
 
   if (loading) return <div className="flex min-h-dvh items-center justify-center">Carregando…</div>;
@@ -111,28 +102,15 @@ export default function PagamentosPage() {
   const nothing = data && data.memberships.length === 0 && data.matchDays.length === 0;
   const matchDays = data ? [...data.matchDays].sort((a, b) => feeRank(a) - feeRank(b)) : [];
 
-  /** Checkout Pix aberto logo abaixo do item que o pediu (antes abria no fim da lista). */
-  const checkoutFor = (key: string) =>
-    open && open.key === key ? (
-      <div ref={checkoutRef} className="mt-md flex scroll-mt-20 flex-col gap-sm border-t border-line-subtle pt-md">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-subtitle">Pagar com Pix</h3>
-          <button
-            type="button"
-            className={secondaryButton}
-            onClick={() => {
-              setOpen(null);
-              restore(key);
-              // Atualiza status e o Pix ativo (o botão passa a "Continuar pagamento Pix").
-              load().catch(() => undefined);
-            }}
-          >
-            Fechar
-          </button>
-        </div>
-        <PixCheckout key={open.charge.id} initialCharge={open.charge} onRegenerate={open.regenerate} onSettled={() => load().catch(() => undefined)} />
-      </div>
-    ) : null;
+  function closeCheckout() {
+    if (!open) return;
+    const key = open.key;
+    sessions.current?.close(); // "Gerar novo código" ainda pendente não reabre a folha
+    setOpen(null);
+    restore(key);
+    // Atualiza status e o Pix ativo (o botão passa a "Continuar pagamento Pix").
+    load().catch(() => undefined);
+  }
 
   return (
     <AppShell>
@@ -172,7 +150,7 @@ export default function PagamentosPage() {
                     const settled = isSettled(m.status);
                     const hasActive = !!m.activePix && m.activePix.status === "Pending";
                     return (
-                      <li key={key} data-pix-item={key} tabIndex={-1} className={`rounded-xl border border-outline-variant bg-surface-container-lowest p-md ${focusRing}`}>
+                      <li key={key} data-pix-item={key} tabIndex={-1} className={`rounded-xl border border-outline-variant bg-surface-container-lowest p-md shadow-elevation-1 ${focusRing}`}>
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className="text-body-lg font-semibold">
@@ -194,7 +172,6 @@ export default function PagamentosPage() {
                             {busyKey === key ? "Gerando Pix…" : hasActive ? "Continuar pagamento Pix" : `Pagar ${formatMoney(m.amount)} com Pix`}
                           </button>
                         ) : null}
-                        {checkoutFor(key)}
                       </li>
                     );
                   })}
@@ -217,7 +194,13 @@ export default function PagamentosPage() {
                     const notLaunched = d.status === "NotCharged" || (d.status === "Pending" && !d.dueAt);
                     const hasActive = !!d.activePix && d.activePix.status === "Pending";
                     return (
-                      <li key={key} data-pix-item={key} tabIndex={-1} className={`rounded-xl border border-outline-variant bg-surface-container-lowest p-md ${focusRing}`}>
+                      <li
+                        key={key}
+                        data-pix-item={key}
+                        tabIndex={-1}
+                        // 07c: cards de diária em elevation-1; Atrasada mantém a borda vermelha (estado) e ganha a sombra.
+                        className={`rounded-xl border bg-surface-container-lowest p-md shadow-elevation-1 ${d.status === "Overdue" ? "border-danger" : "border-outline-variant"} ${focusRing}`}
+                      >
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-body-lg font-semibold">{d.matchTitle || "Pelada"}</p>
@@ -253,7 +236,6 @@ export default function PagamentosPage() {
                                 : `Pagar ${formatMoney(d.amount)} com Pix`}
                           </button>
                         ) : null}
-                        {checkoutFor(key)}
                       </li>
                     );
                   })}
@@ -264,6 +246,11 @@ export default function PagamentosPage() {
         )}
 
       </div>
+      {open ? (
+        <Sheet title="Pagar com Pix" onClose={closeCheckout}>
+          <PixCheckout key={open.charge.id} initialCharge={open.charge} onRegenerate={open.regenerate} onSettled={() => load().catch(() => undefined)} />
+        </Sheet>
+      ) : null}
     </AppShell>
   );
 }

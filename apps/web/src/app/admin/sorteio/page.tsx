@@ -1,5 +1,6 @@
 "use client";
 
+import { staggerDelayMs } from "@/lib/motion";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WhatsAppSummary } from "@/components/WhatsAppSummary";
@@ -229,7 +230,7 @@ export default function SorteioPage() {
               aria-modal="false"
               aria-labelledby="troca-titulo"
               aria-describedby="troca-detalhe"
-              className="fixed inset-x-0 top-16 z-40 mx-auto flex w-[calc(100%-2rem)] max-w-xl flex-col gap-2 rounded-xl border-2 border-pitch-green-container bg-surface-container-lowest p-3 shadow-lg"
+              className="fixed inset-x-0 top-16 z-40 mx-auto flex w-[calc(100%-2rem)] max-w-xl flex-col gap-2 rounded-xl border-2 border-pitch-green-container bg-surface-container-lowest p-3 shadow-elevation-3 animate-rise-in"
             >
               <p id="troca-titulo" className="text-body-md font-semibold">
                 Prévia da troca
@@ -257,7 +258,7 @@ export default function SorteioPage() {
             <div
               role="status"
               aria-live="polite"
-              className="fixed inset-x-0 top-16 z-40 mx-auto flex w-[calc(100%-2rem)] max-w-xl flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-pitch-green-container bg-surface-container-lowest p-3 shadow-lg"
+              className="fixed inset-x-0 top-16 z-40 mx-auto flex w-[calc(100%-2rem)] max-w-xl flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-pitch-green-container bg-surface-container-lowest p-3 shadow-elevation-3 animate-rise-in"
             >
               <p className="text-body-md">
                 Trocando <strong>{playerDisplayName(selected.name)}</strong> ({selected.color}). Toque no jogador de destino para ver a prévia da troca.
@@ -346,11 +347,12 @@ function DrawReview({
                 {style.label}
               </h3>
               <ul className="mt-sm flex flex-col gap-1">
-                {orderedMembers(team).map((m) => {
+                {orderedMembers(team).map((m, idx) => {
                   const isSelected = selected?.playerProfileId === m.playerProfileId;
                   const name = playerDisplayName(m.displayName);
                   return (
-                    <li key={m.playerProfileId}>
+                    // Times sorteados: cascata de 40 ms limitada para terminar em ≤ 300 ms; sem cascata com menos movimento.
+                    <li key={m.playerProfileId} className="animate-rise-in" style={{ animationDelay: `${staggerDelayMs(idx)}ms` }}>
                       <button
                         type="button"
                         disabled={locked}

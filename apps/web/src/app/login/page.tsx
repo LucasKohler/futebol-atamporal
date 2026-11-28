@@ -56,7 +56,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-page px-page-mobile">
-      <div className="w-full max-w-md rounded-card border border-line-subtle bg-card p-lg shadow-sm">
+      <div className="w-full max-w-md rounded-card border border-line-subtle bg-card p-lg shadow-elevation-1">
         <div className="mb-lg text-center">
           <p className="text-label-sm uppercase text-fg-brand">Futebol Atemporal</p>
           <h1 className="mt-2 text-headline-lg text-fg">Entrar</h1>

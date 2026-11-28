@@ -1,5 +1,6 @@
 "use client";
 
+import { useScrollEdges } from "@/components/useScrollEdges";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -474,10 +475,12 @@ const SHEET_STATUSES = ["Drawn", "InProgress", "AwaitingClose"];
 function AdminRoundBar({ match, draw }: { match: MatchSummary; draw: Draw | null }) {
   const step = deriveRoundStep({ status: match.status, confirmedCount: match.confirmedCount, draw });
   const sheet = SHEET_STATUSES.includes(match.status);
+  const { scrolled } = useScrollEdges();
   return (
     <nav
       aria-label="Atalhos do admin"
-      className="sticky top-14 z-20 flex flex-wrap items-center justify-between gap-2 rounded-card border border-line-subtle bg-card p-sm shadow-sm"
+      // elevation-bar-top só quando o conteúdo rola por baixo da barra (regra 27/11).
+      className={`sticky top-14 z-20 flex flex-wrap items-center justify-between gap-2 rounded-card border border-line-subtle bg-card p-sm transition-shadow duration-base ease-standard ${scrolled ? "shadow-elevation-bar-top" : ""}`}
     >
       <p className="min-w-0 px-1 text-body-md">
         <span className="text-label-md uppercase text-fg-muted">Etapa {step.current} de 4 · </span>

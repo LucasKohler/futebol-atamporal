@@ -87,6 +87,31 @@
   --touch-min: 44px;
   --touch-game: 56px;
   --icon-md: 20px;
+
+  /* Véu atrás de folhas e diálogos (revisão 27/11) */
+  --scrim: rgba(11, 28, 48, 0.48);
+
+  /* Sombras: no máximo um elevation-2 por tela; cards elevados mantêm borda sutil */
+  --elevation-0: none;
+  --elevation-1: 0 1px 2px rgba(11, 28, 48, 0.06), 0 1px 3px rgba(11, 28, 48, 0.08);
+  --elevation-2: 0 2px 4px rgba(11, 28, 48, 0.06), 0 6px 16px rgba(11, 28, 48, 0.1);
+  --elevation-3: 0 4px 8px rgba(11, 28, 48, 0.08), 0 12px 28px rgba(11, 28, 48, 0.14);
+  --elevation-sheet: 0 -2px 6px rgba(11, 28, 48, 0.06), 0 -12px 32px rgba(11, 28, 48, 0.16);
+  --elevation-bar: 0 -1px 0 rgba(11, 28, 48, 0.08), 0 -4px 12px rgba(11, 28, 48, 0.06);
+  --elevation-bar-top: 0 1px 0 rgba(11, 28, 48, 0.08), 0 4px 12px rgba(11, 28, 48, 0.06);
+
+  /* Movimento: o dado muda na hora; a animação só acompanha */
+  --duration-instant: 80ms;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 280ms;
+  --duration-exit: 160ms;
+  /* Comemoração fora da Súmula (Pix confirmado). Na Súmula nada passa de 300 ms (decisão 27/11). */
+  --duration-celebrate: 480ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 1, 1);
+  --ease-emphasis: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 body {
@@ -97,13 +122,75 @@ body {
   @apply outline-2 outline-offset-2 outline-focus;
 }
 
+/* Toque em botão: escala 0,97 e volta (movimento não essencial). */
+@layer components {
+  .press {
+    transition: transform var(--duration-instant) var(--ease-standard);
+  }
+  .press:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
+@keyframes fa-score-in {
+  from { transform: translateY(60%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes fa-score-in-down {
+  from { transform: translateY(-60%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+/* Pulso da borda do time no gol: limitado a 280 ms (nada na Súmula passa de 300 ms). */
+@keyframes fa-team-pulse {
+  0% { box-shadow: 0 0 0 0 var(--pulse-color, transparent); }
+  50% { box-shadow: 0 0 0 4px var(--pulse-color, transparent); }
+  100% { box-shadow: 0 0 0 0 var(--pulse-color, transparent); }
+}
+@keyframes fa-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes fa-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fa-rise-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes fa-toast-in {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes fa-menu-in {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes fa-check-draw {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes fa-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/*
+ * Menos movimento (obrigatório). Preserva o bloco anterior (mais completo que o do plano) e o amplia:
+ * sem deslocamento, pulso, cascata ou escala; estado e feedback (texto, cor, ícone) continuam visíveis.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
+  }
+  .press:active:not(:disabled) {
+    transform: none;
   }
 }

@@ -40,7 +40,7 @@ export function AdminDrawer({
   return (
     <div
       ref={rootRef}
-      className={`rounded-xl border ${open ? "border-pitch-green-container bg-surface-container-lowest shadow-sm" : "border-outline-variant bg-surface-container-lowest"}`}
+      className={`rounded-xl border ${open ? "border-pitch-green-container bg-surface-container-lowest shadow-elevation-1" : "border-outline-variant bg-surface-container-lowest"}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2 px-md py-sm">
         <div className="min-w-0 flex-1">{summary}</div>

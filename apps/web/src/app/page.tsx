@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { AdminLoading, StatusBadge } from "@/components/admin/AdminCard";
 import { primaryButton, secondaryButton } from "@/components/admin/ui";
 import { PaymentsLink } from "@/components/pix/PaymentsLink";
+import { homeElevation } from "@/lib/elevation";
 import { formatMoney } from "@/lib/adminFilters";
 import { api, MatchDetail, MyMatchDayPayment } from "@/lib/api";
 import { homePlan, spotsText, whenText, type MatchStage } from "@/lib/homeStage";
@@ -14,6 +15,7 @@ import { playerDisplayName } from "@/lib/playerDisplayName";
 import { matchStatusLabel, registrationStatusLabel, useSession } from "@/lib/useSession";
 
 const cardClass = "rounded-card border border-line-subtle bg-card p-md sm:p-lg";
+
 
 export default function HomePage() {
   const { user, group, loading, error, isAdmin } = useSession();
@@ -101,6 +103,8 @@ export default function HomePage() {
         {!upcomingLoaded ? (
           <AdminLoading label="Carregando a próxima partida…" />
         ) : (
+          // Card muda de etapa: o conteúdo novo entra em fade (duration-base); sem movimento com menos movimento.
+          <div key={plan.stage.kind} className="animate-[fa-fade-in_var(--duration-base)_var(--ease-standard)_both]">
           <StageCard
             stage={plan.stage}
             primary={stagePrimary}
@@ -110,6 +114,7 @@ export default function HomePage() {
             isAdmin={isAdmin}
             onToggle={joinOrLeave}
           />
+          </div>
         )}
 
         {plan.pendingFee ? <FeeCard fee={plan.pendingFee} primary={pendingPrimary} timeZone={tz} /> : null}
@@ -138,7 +143,7 @@ function FeeCard({ fee, primary, extra = 0, timeZone }: { fee: MyMatchDayPayment
   return (
     <section
       aria-labelledby={`fee-${fee.matchId}`}
-      className={`rounded-card border p-md sm:p-lg ${overdue ? "border-danger bg-danger-bg" : "border-line-subtle bg-card"}`}
+      className={`rounded-card border p-md sm:p-lg ${homeElevation(primary)} ${overdue ? "border-danger bg-danger-bg" : "border-line-subtle bg-card"}`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-label-sm uppercase text-fg-secondary">{overdue ? "Diária em atraso" : "Pelada encerrada"}</p>
@@ -180,6 +185,7 @@ function StageCard({
   isAdmin: boolean;
   onToggle: (joined: boolean) => void;
 }) {
+  const stageClass = `${cardClass} ${homeElevation(primary)}`;
   const error = msg ? (
     <p role="alert" className="mt-md rounded-lg bg-danger-bg p-3 text-body-md text-danger-strong">
       {msg}
@@ -188,7 +194,7 @@ function StageCard({
 
   if (stage.kind === "none") {
     return (
-      <section className={cardClass}>
+      <section className={stageClass}>
         <h3 className="text-headline-md">Próxima partida</h3>
         <p className="mt-1 text-body-md text-fg-secondary">Nenhuma partida aberta. Você recebe um aviso quando a lista abrir.</p>
         {isAdmin ? (
@@ -218,9 +224,10 @@ function StageCard({
 
   if (stage.kind === "confirm") {
     return (
-      <section className={cardClass}>
+      <section className={stageClass}>
         {header}
-        <p className="mt-sm text-body-md">
+        {/* Confirmar presença: o texto troca na hora e o novo estado entra em duration-base. */}
+        <p key={stage.joined ? "in" : "out"} className="mt-sm animate-rise-in text-body-md">
           {stage.joined ? (
             <>
               Você está <strong>{registrationStatusLabel(myStatus)}</strong>
@@ -245,7 +252,7 @@ function StageCard({
 
   if (stage.kind === "play") {
     return (
-      <section className={cardClass}>
+      <section className={stageClass}>
         {header}
         <p className="mt-sm text-body-md">
           {match.status === "InProgress" ? "A pelada está rolando." : match.status === "AwaitingClose" ? "Jogo encerrado, aguardando a súmula." : "Os times foram sorteados."}
@@ -260,7 +267,7 @@ function StageCard({
   }
 
   return (
-    <section className={cardClass}>
+    <section className={stageClass}>
       {header}
       <p className="mt-sm text-body-md">
         {matchStatusLabel(match.status)}

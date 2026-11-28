@@ -50,7 +50,7 @@ export function PublicLiveDay({ matchId, matchStatus }: { matchId: string; match
         {day.matchStatus === "Completed" ? "Resultado do dia" : "Pelada ao vivo"}
       </h2>
       {now ? (
-        <div role="status" aria-live="polite" className="rounded-xl border-2 border-pitch-green-container bg-surface-container-lowest p-md text-center">
+        <div role="status" aria-live="polite" className="rounded-xl border-2 border-pitch-green-container bg-surface-container-lowest p-md text-center shadow-elevation-2">
           <p className="text-label-md text-on-surface-variant">Partida #{now.order} em andamento</p>
           <p className="sr-only">
             {colorOf(now.homeTeamId)} {now.homeScore} x {now.awayScore} {colorOf(now.awayTeamId)}
@@ -72,7 +72,7 @@ export function PublicLiveDay({ matchId, matchStatus }: { matchId: string; match
           </div>
         </div>
       ) : null}
-      <DayStandings day={day} caption="Cores no dia" />
+      <DayStandings day={day} caption="Cores no dia" surface="subtle" />
       <details>
         <summary className="flex min-h-11 cursor-pointer items-center text-label-md">Partidas do dia ({day.games.length})</summary>
         <div className="mt-sm">

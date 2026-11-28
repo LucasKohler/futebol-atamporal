@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AdminEmpty } from "@/components/admin/AdminCard";
 import { focusRing, gameButton, inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
 import { colorResolver, DayStandings } from "@/components/live/DayBoard";
@@ -22,7 +22,9 @@ import {
   waitingTeamId,
 } from "@/lib/live";
 import { playerDisplayName } from "@/lib/playerDisplayName";
+import { vibrateGoal } from "@/lib/motion";
 import { teamStyle } from "@/lib/teams";
+import { AnimatedScore, useScoreChange } from "@/components/live/AnimatedScore";
 import { SavesCounter } from "./SavesCounter";
 
 /**
@@ -140,6 +142,7 @@ export function LiveTab({ day, busy, mutate, onGoToCheck }: { day: LiveDay; busy
       `${ownGoal ? "Gol contra de" : "Gol de"} ${name}: ${colorOf(credited)} marcou.`,
       { retryOnConflict: true },
     );
+    vibrateGoal(); // opcional: o aviso "Gol de X" continua sendo a confirmação
     setOwnGoal(false);
   }
 
@@ -152,40 +155,26 @@ export function LiveTab({ day, busy, mutate, onGoToCheck }: { day: LiveDay; busy
         <span className="text-label-md text-on-surface-variant">Fica de fora: {colorOf(waitingTeamId(day, game.homeTeamId, game.awayTeamId) ?? "")}</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-sm">
+      {/* Placar: um único elevation-2 na tela (decisão 27/11); cada cor mantém a borda do time. */}
+      <div className="grid grid-cols-2 gap-sm rounded-card border border-line-subtle bg-card p-sm shadow-elevation-2">
         {sides.map((teamId) => {
           const t = day.teams.find((x) => x.id === teamId)!;
-          const style = teamStyle(t);
           const last = lastGoalForSide(game, teamId);
           return (
-            <div key={teamId} className={`flex flex-col items-center gap-1 rounded-xl border-2 ${style.border} bg-surface-container-lowest p-sm`}>
-              <p className="flex items-center gap-1 text-body-lg font-semibold">
-                <span aria-hidden="true" className={`inline-block h-3 w-3 rounded-full ${style.swatch}`} />
-                {style.label}
-              </p>
-              <p className="text-display tabular-nums" aria-live="polite" aria-label={`${style.label} ${score[teamId]} gols`}>
-                {score[teamId]}
-              </p>
-              <p className="min-h-4 text-caption text-fg-secondary">
-                {last ? `Último: ${playerDisplayName(last.displayName)}${last.ownGoal ? " (contra)" : ""}` : "Sem gols"}
-              </p>
-              {/* Desfazer explícito: remove o último gol da cor e a autoria juntos (placar + artilharia). */}
-              <button
-                type="button"
-                disabled={busy || !last}
-                className={`${gameButton} w-full border border-line-control bg-card text-body-md text-fg hover:bg-subtle`}
-                aria-label={last ? `Desfazer o último gol do ${style.label}, de ${playerDisplayName(last.displayName)}` : `Sem gol do ${style.label} para desfazer`}
-                onClick={() =>
-                  last &&
-                  mutate(
-                    (v) => api.removeLiveGoal(day.matchId, game.id, last.id, v),
-                    `Gol de ${playerDisplayName(last.displayName)} desfeito: placar e artilharia corrigidos.`,
-                  )
-                }
-              >
-                <span aria-hidden="true">↶</span> Desfazer gol
-              </button>
-            </div>
+            <ScoreSide
+              key={teamId}
+              team={t}
+              score={score[teamId]}
+              last={last}
+              busy={busy}
+              onUndo={() =>
+                last &&
+                mutate(
+                  (v) => api.removeLiveGoal(day.matchId, game.id, last.id, v),
+                  `Gol de ${playerDisplayName(last.displayName)} desfeito: placar e artilharia corrigidos.`,
+                )
+              }
+            />
           );
         })}
       </div>
@@ -204,9 +193,14 @@ export function LiveTab({ day, busy, mutate, onGoToCheck }: { day: LiveDay; busy
         </div>
         {sides.map((teamId) => {
           const players = day.players.filter((p) => p.teamId === teamId && p.present);
+          const team = day.teams.find((x) => x.id === teamId);
+          const style = team ? teamStyle(team) : null;
           return (
             <div key={teamId} role="group" aria-label={`Jogadores do ${colorOf(teamId)}`} className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <span className="col-span-2 w-full text-label-md text-fg-secondary">{colorOf(teamId)}</span>
+              <span className="col-span-2 flex w-full items-center gap-1 text-label-md text-fg-secondary">
+                <span aria-hidden="true" className={`inline-block h-2.5 w-2.5 rounded-full ${style?.swatch ?? "bg-outline"}`} />
+                {colorOf(teamId)}
+              </span>
               {players.map((p) => {
                 const name = playerDisplayName(p.displayName);
                 return (
@@ -218,8 +212,12 @@ export function LiveTab({ day, busy, mutate, onGoToCheck }: { day: LiveDay; busy
                     aria-label={`${ownGoal ? "Gol contra de" : "Gol de"} ${name} (${colorOf(teamId)})`}
                     className={`${gameButton} min-w-0 border ${ownGoal ? "border-danger bg-card" : "border-line-control bg-subtle"} text-fg`}
                   >
-                    {ownGoal ? "GC " : "+ "}
-                    {name}
+                    {/* Ponto da cor do time (10 px): dá para saber o time de qualquer botão sem olhar o título. */}
+                    <span aria-hidden="true" className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${style?.swatch ?? "bg-outline"}`} />
+                    <span className="min-w-0 truncate">
+                      {ownGoal ? "GC " : "+ "}
+                      {name}
+                    </span>
                   </button>
                 );
               })}
@@ -230,14 +228,14 @@ export function LiveTab({ day, busy, mutate, onGoToCheck }: { day: LiveDay; busy
       </div>
 
       {tied ? (
-        <fieldset className="rounded-xl border-2 border-warning bg-warning-subtle p-md">
+        <fieldset className="animate-rise-in rounded-xl border-2 border-warning bg-warning-subtle p-md">
           <legend className="px-1 text-body-lg font-semibold text-warning-strong">Decisão nos pênaltis alternados</legend>
           <p className="text-body-md text-warning-strong">Empatou: quem ganhou nos pênaltis? (não conta no placar nem na artilharia)</p>
           <div className="mt-sm grid grid-cols-2 gap-2">
             {sides.map((id) => (
               <label
                 key={id}
-                className={`flex min-h-touch-game cursor-pointer items-center justify-center gap-2 rounded-full border-2 px-3 text-body-lg has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-pitch-green-container ${
+                className={`press flex min-h-touch-game cursor-pointer items-center justify-center gap-2 rounded-full border-2 px-3 text-body-lg transition-colors duration-base ease-standard has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-pitch-green-container ${
                   penWinner === id ? "border-pitch-green-container bg-pitch-green-container text-on-primary" : "border-outline-variant bg-surface-container-lowest"
                 }`}
               >
@@ -297,5 +295,59 @@ export function LiveTab({ day, busy, mutate, onGoToCheck }: { day: LiveDay; busy
         Finalizar Partida #{game.order} e preparar #{game.order + 1}
       </button>
     </section>
+  );
+}
+
+/** Um lado do placar: cor, número animado (≤ 300 ms), último gol e "Desfazer gol". */
+function ScoreSide({
+  team,
+  score,
+  last,
+  busy,
+  onUndo,
+}: {
+  team: LiveDay["teams"][number];
+  score: number;
+  last: ReturnType<typeof lastGoalForSide>;
+  busy: boolean;
+  onUndo: () => void;
+}) {
+  const style = teamStyle(team);
+  const change = useScoreChange(score);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Gol: a borda do time pulsa uma vez (280 ms). Gol desfeito: sem pulso. Menos movimento: sem pulso.
+  useEffect(() => {
+    if (change.dir !== "up" || change.tick === 0) return;
+    const el = cardRef.current;
+    if (!el || typeof el.animate !== "function") return;
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    el.animate(
+      [{ boxShadow: `0 0 0 0 ${style.cssColor}` }, { boxShadow: `0 0 0 4px ${style.cssColor}` }, { boxShadow: `0 0 0 0 ${style.cssColor}` }],
+      { duration: 280, easing: "cubic-bezier(0.2, 0, 0, 1)" },
+    );
+  }, [change.dir, change.tick, style.cssColor]);
+
+  return (
+    <div ref={cardRef} className={`flex flex-col items-center gap-1 rounded-xl border-2 ${style.border} bg-card p-sm`}>
+      <p className="flex items-center gap-1 text-body-lg font-semibold">
+        <span aria-hidden="true" className={`inline-block h-3 w-3 rounded-full ${style.swatch}`} />
+        {style.label}
+      </p>
+      <AnimatedScore value={score} dir={change.dir} tick={change.tick} label={`${style.label} ${score} gols`} />
+      <p className="min-h-4 text-caption text-fg-secondary">
+        {last ? `Último: ${playerDisplayName(last.displayName)}${last.ownGoal ? " (contra)" : ""}` : "Sem gols"}
+      </p>
+      {/* Desfazer explícito: remove o último gol da cor e a autoria juntos (placar + artilharia). */}
+      <button
+        type="button"
+        disabled={busy || !last}
+        className={`${gameButton} w-full border border-line-control bg-card text-body-md text-fg hover:bg-subtle`}
+        aria-label={last ? `Desfazer o último gol do ${style.label}, de ${playerDisplayName(last.displayName)}` : `Sem gol do ${style.label} para desfazer`}
+        onClick={onUndo}
+      >
+        <span aria-hidden="true">↶</span> Desfazer gol
+      </button>
+    </div>
   );
 }

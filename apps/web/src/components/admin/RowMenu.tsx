@@ -50,7 +50,7 @@ export function RowMenu({ label, children, disabled }: { label: string; children
       {open ? (
         <div
           id={id}
-          className="absolute right-0 z-20 mt-1 flex min-w-[14rem] flex-col gap-1 rounded-card border border-line-subtle bg-card p-sm shadow-lg [&>*]:w-full [&_button]:w-full [&_button]:justify-start"
+          className="absolute right-0 z-20 mt-1 flex min-w-[14rem] flex-col gap-1 origin-top-right animate-menu-in rounded-card border border-line-subtle bg-card p-sm shadow-elevation-3 [&>*]:w-full [&_button]:w-full [&_button]:justify-start"
         >
           {children}
         </div>

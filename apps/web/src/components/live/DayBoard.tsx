@@ -1,5 +1,6 @@
 "use client";
 
+import { useOverflowHint } from "@/components/useOverflowHint";
 import type { ReactNode } from "react";
 import type { LiveDay, LiveGame } from "@/lib/api";
 import { gameResultText, savesText, sortedStandings } from "@/lib/live";
@@ -20,51 +21,84 @@ function Swatch({ day, teamId }: { day: LiveDay; teamId: string }) {
 }
 
 /** Classificação do dia (regra A): vitórias totais com detalhe das vitórias nos pênaltis, saldo e gols. */
-export function DayStandings({ day, caption = "Classificação do dia" }: { day: LiveDay; caption?: string }) {
+export function DayStandings({
+  day,
+  caption = "Classificação do dia",
+  surface = "page",
+}: {
+  day: LiveDay;
+  caption?: string;
+  /** Fundo onde a tabela está: a coluna fixa e o degradê da borda usam a mesma cor. */
+  surface?: "page" | "subtle";
+}) {
   const colorOf = colorResolver(day);
   const rows = sortedStandings(day);
+  const { ref, hint } = useOverflowHint<HTMLDivElement>();
+  const bg = surface === "subtle" ? "bg-subtle" : "bg-page";
+  const fade = surface === "subtle" ? "from-subtle" : "from-page";
+  const scrolls = hint.start || hint.end;
+  // Primeira coluna fixa; sombra só quando há conteúdo rolado por baixo dela.
+  const sticky = `sticky left-0 z-[1] ${bg} ${hint.start ? "shadow-[4px_0_6px_-4px_rgba(11,28,48,0.18)]" : ""}`;
   return (
-    <div className="overflow-x-auto">
-      {/* Cabe em 327 px (celular): colunas curtas com abreviação explicada e troféu junto do nome. */}
-      <table className="w-full table-fixed text-left text-body-md [&_td]:px-1 [&_td]:text-center [&_td]:tabular-nums [&_thead_th]:px-1 [&_thead_th:not(:first-child)]:text-center">
-        <caption className="mb-1 text-left text-label-md text-fg-secondary">{caption}: vitória no tempo normal ou nos pênaltis vale 1.</caption>
-        <colgroup>
-          <col className="w-[34%]" />
-          <col span={6} />
-        </colgroup>
-        <thead className="text-label-md text-fg-secondary">
-          <tr>
-            <th scope="col" className="py-1">Cor</th>
-            <th scope="col"><abbr title="Jogos">J</abbr></th>
-            <th scope="col"><abbr title="Vitórias">V</abbr></th>
-            <th scope="col"><abbr title="Vitórias nos pênaltis">VP</abbr></th>
-            <th scope="col"><abbr title="Derrotas">D</abbr></th>
-            <th scope="col"><abbr title="Saldo de gols">SG</abbr></th>
-            <th scope="col"><abbr title="Gols marcados">G</abbr></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((s) => (
-            <tr key={s.teamId} className={`border-t border-line-subtle ${s.isDayLeader ? "font-semibold" : ""}`}>
-              <th scope="row" className="whitespace-nowrap py-2">
-                <Swatch day={day} teamId={s.teamId} />
-                {colorOf(s.teamId)}
-                {s.isDayLeader && s.played > 0 ? (
-                  <span role="img" aria-label="líder do dia" className="ml-1">
-                    🏆
-                  </span>
-                ) : null}
-              </th>
-              <td>{s.played}</td>
-              <td>{s.wins}</td>
-              <td>{s.winsPenalties}</td>
-              <td>{s.losses}</td>
-              <td>{s.goalsFor - s.goalsAgainst}</td>
-              <td>{s.goalsFor}</td>
+    <div className="relative">
+      {/*
+        Regra de tabelas (27/11): com rótulos curtos cabe em 288 px (celular) e não rola. Se não couber (fonte
+        grande, mais colunas), rola na horizontal com a primeira coluna fixa e um degradê na borda direita.
+        Nunca corta coluna sem rolagem.
+      */}
+      {/* Legenda fora da área rolável: não é cortada quando a tabela rola. */}
+      <p aria-hidden="true" className="mb-1 text-label-md text-fg-secondary">
+        {caption}: vitória no tempo normal ou nos pênaltis vale 1.
+      </p>
+      <div
+        ref={ref}
+        className="overflow-x-auto"
+        role={scrolls ? "region" : undefined}
+        aria-label={scrolls ? `${caption}, role para o lado para ver todas as colunas` : undefined}
+        tabIndex={scrolls ? 0 : undefined}
+      >
+        <table className="w-full min-w-[18rem] table-fixed text-left text-body-md [&_td]:px-1 [&_td]:text-center [&_td]:tabular-nums [&_thead_th]:px-1 [&_thead_th:not(:first-child)]:text-center">
+          <caption className="sr-only">{caption}: vitória no tempo normal ou nos pênaltis vale 1.</caption>
+          <colgroup>
+            <col className="w-[34%]" />
+            <col span={6} />
+          </colgroup>
+          <thead className="text-label-md text-fg-secondary">
+            <tr>
+              <th scope="col" className={`py-1 ${sticky}`}>Cor</th>
+              <th scope="col"><abbr title="Jogos">J</abbr></th>
+              <th scope="col"><abbr title="Vitórias">V</abbr></th>
+              <th scope="col"><abbr title="Vitórias nos pênaltis">VP</abbr></th>
+              <th scope="col"><abbr title="Derrotas">D</abbr></th>
+              <th scope="col"><abbr title="Saldo de gols">SG</abbr></th>
+              <th scope="col"><abbr title="Gols marcados">G</abbr></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((s) => (
+              <tr key={s.teamId} className={`border-t border-line-subtle ${s.isDayLeader ? "font-semibold" : ""}`}>
+                {/* Troféu na mesma linha do nome (nowrap). */}
+                <th scope="row" className={`whitespace-nowrap py-2 ${sticky}`}>
+                  <Swatch day={day} teamId={s.teamId} />
+                  {colorOf(s.teamId)}
+                  {s.isDayLeader && s.played > 0 ? (
+                    <span role="img" aria-label="líder do dia" className="ml-1">
+                      🏆
+                    </span>
+                  ) : null}
+                </th>
+                <td>{s.played}</td>
+                <td>{s.wins}</td>
+                <td>{s.winsPenalties}</td>
+                <td>{s.losses}</td>
+                <td>{s.goalsFor - s.goalsAgainst}</td>
+                <td>{s.goalsFor}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {hint.end ? <span aria-hidden="true" className={`pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l ${fade} to-transparent`} /> : null}
     </div>
   );
 }

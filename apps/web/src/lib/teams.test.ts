@@ -58,7 +58,7 @@ const draw: Draw = {
 
 describe("teamStyle", () => {
   it("labels colors by text and falls back for legacy teams", () => {
-    expect(teamStyle({ color: "Vermelho", name: "Vermelho" })).toMatchObject({ label: "Vermelho", swatch: "bg-red-600" });
+    expect(teamStyle({ color: "Vermelho", name: "Vermelho" })).toMatchObject({ label: "Vermelho", swatch: "bg-team-red", border: "border-team-red" });
     expect(teamStyle({ color: null, name: "Time A" })).toMatchObject({ label: "Time A", emoji: "⚪" });
   });
 });
