@@ -317,7 +317,8 @@ public sealed class LiveWebPushSender : IWebPushSender
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            _logger.LogWarning(ex, "Falha transitória ao enviar Web Push para inscrição {SubscriptionId}", target.SubscriptionId);
+            _logger.LogWarning("Falha transitória ao enviar Web Push para inscrição {SubscriptionId} ({ErrorType}).",
+                target.SubscriptionId, ex.GetType().Name);
             return new WebPushSendResult(WebPushSendOutcome.TransientError, null, "Timeout ou erro de rede.");
         }
     }
@@ -500,7 +501,9 @@ public sealed class NotificationDispatchRunner : INotificationDispatchRunner
                     break;
                 }
 
-                // Revalida vínculo ativo e inscrição imediatamente antes da chamada ao provedor de push.
+                // Revalida vínculo, inscrição e sessão antes de cada nova chamada. Uma revogação já
+                // observada impede esse envio. Uma chamada já iniciada, inclusive o push aceito pelo
+                // provedor, pode terminar ou ser entregue após a revogação.
                 if (!await HasActiveMembershipAsync(db, notif.GroupId, notif.UserId, ct))
                 {
                     membershipLost = true;
@@ -531,7 +534,8 @@ public sealed class NotificationDispatchRunner : INotificationDispatchRunner
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Erro inesperado no sender de push para inscrição {SubscriptionId}", sub.Id);
+                    _logger.LogWarning("Erro inesperado no sender de push para inscrição {SubscriptionId} ({ErrorType}).",
+                        sub.Id, ex.GetType().Name);
                     result = new WebPushSendResult(WebPushSendOutcome.TransientError, null, "Exceção no sender.");
                 }
 
@@ -584,9 +588,9 @@ public sealed class NotificationDispatchRunner : INotificationDispatchRunner
                             }
                             else
                             {
-                                _logger.LogWarning(ex,
-                                    "Falha ao persistir entrega da notificação {NotificationId} para inscrição {SubscriptionId}.",
-                                    notif.Id, sub.Id);
+                                _logger.LogWarning(
+                                    "Falha ao persistir entrega da notificação {NotificationId} para inscrição {SubscriptionId} ({ErrorType}).",
+                                    notif.Id, sub.Id, ex.GetType().Name);
                                 throw;
                             }
                         }
@@ -732,20 +736,24 @@ public sealed class NotificationDispatcher : BackgroundService
 {
     private readonly NotificationWakeupSignal _signal;
     private readonly INotificationDispatchRunner _runner;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<NotificationDispatcher> _logger;
 
     public NotificationDispatcher(
         NotificationWakeupSignal signal,
         INotificationDispatchRunner runner,
+        IServiceScopeFactory scopeFactory,
         ILogger<NotificationDispatcher> logger)
     {
         _signal = signal;
         _runner = runner;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var nextCleanupAt = DateTimeOffset.MinValue;
         // Ao reiniciar, retoma imediatamente o que ficou pendente no banco (D1).
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -759,7 +767,26 @@ public sealed class NotificationDispatcher : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro no ciclo do NotificationDispatcher.");
+                _logger.LogError("Erro no ciclo do NotificationDispatcher ({ErrorType}).", ex.GetType().Name);
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            if (now >= nextCleanupAt)
+            {
+                nextCleanupAt = now.AddHours(1);
+                try
+                {
+                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    await scope.ServiceProvider.GetRequiredService<UserSessionCleanup>().PurgeExpiredAsync(now, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Falha na limpeza de sessões ({ErrorType}).", ex.GetType().Name);
+                }
             }
 
             await _signal.WaitAsync(TimeSpan.FromSeconds(30), stoppingToken);

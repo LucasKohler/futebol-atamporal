@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
 using FutebolAtemporal.Application.Notifications;
+using FutebolAtemporal.Domain.Entities;
 using FutebolAtemporal.Domain.Enums;
 using FutebolAtemporal.Domain.Services;
 using FutebolAtemporal.Infrastructure.Identity;
@@ -156,6 +157,134 @@ public class SessionPushLifecycleApiTests : IClassFixture<WebApplicationFactory<
         Assert.DoesNotContain(epExpired, sent);
         Assert.DoesNotContain(epReset, sent);
         Assert.DoesNotContain(epSwitch, sent);
+    }
+
+    [Fact]
+    public async Task Cleanup_preserves_live_sessions_revoked_cookies_before_expiry_and_push_delivery_history()
+    {
+        var active = NewClient();
+        var (_, userId) = await RegisterAsync(active, "11963000011", "Limpeza de sessões");
+        var expired = NewClient();
+        var login = await expired.PostAsJsonAsync("/api/auth/login", new { phone = "11963000011", password = TestAuth.Password });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        var groupId = (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
+        const string activeEndpoint = "https://fcm.googleapis.com/fcm/send/cleanup-active";
+        const string expiredEndpoint = "https://fcm.googleapis.com/fcm/send/cleanup-expired";
+        const string revokedEndpoint = "https://fcm.googleapis.com/fcm/send/cleanup-old-revoked";
+        await SubscribeAsync(active, activeEndpoint, Keys());
+        await SubscribeAsync(expired, expiredEndpoint, Keys());
+        await SubscribeAsync(expired, revokedEndpoint, Keys());
+
+        var now = DateTimeOffset.UtcNow;
+        var previouslyRevoked = now.AddDays(-3);
+        var retainedRevokedId = Guid.NewGuid();
+        var oldRevokedId = Guid.NewGuid();
+        Guid activeSessionId;
+        Guid expiredSessionId;
+        Guid expiredSubscriptionId;
+        var deliveryId = Guid.NewGuid();
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var oldSub = await db.PushSubscriptions.SingleAsync(s => s.Endpoint == expiredEndpoint);
+            var oldRevokedSub = await db.PushSubscriptions.SingleAsync(s => s.Endpoint == revokedEndpoint);
+            var activeSub = await db.PushSubscriptions.SingleAsync(s => s.Endpoint == activeEndpoint);
+            expiredSubscriptionId = oldSub.Id;
+            expiredSessionId = oldSub.SessionId!.Value;
+            activeSessionId = activeSub.SessionId!.Value;
+            var oldSession = await db.UserSessions.SingleAsync(s => s.Id == expiredSessionId);
+            oldSession.ExpiresAt = now.AddHours(-1).ToOffset(TimeSpan.FromHours(-3));
+
+            db.UserSessions.AddRange(
+                new UserSession { Id = oldRevokedId, UserId = userId, CreatedAt = now.AddDays(-14), ExpiresAt = now.AddDays(-1), RevokedAt = previouslyRevoked },
+                new UserSession { Id = retainedRevokedId, UserId = userId, CreatedAt = now.AddDays(-1), ExpiresAt = now.AddDays(13), RevokedAt = now.AddHours(-2) });
+            oldRevokedSub.SessionId = oldRevokedId;
+            oldRevokedSub.IsActive = false;
+            oldRevokedSub.DeactivatedAt = previouslyRevoked;
+
+            var campaign = new NotificationCampaign { Id = Guid.NewGuid(), GroupId = groupId, Title = "Teste", Body = "Teste", ActionUrl = "/" };
+            var notification = new UserNotification { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, CampaignId = campaign.Id,
+                Title = campaign.Title, Body = campaign.Body, ActionUrl = "/", PushState = NotificationPushState.Sent };
+            db.NotificationCampaigns.Add(campaign);
+            db.UserNotifications.Add(notification);
+            db.NotificationDeliveries.Add(new NotificationDelivery { Id = deliveryId, NotificationId = notification.Id, SubscriptionId = oldSub.Id, SentAt = now.AddHours(-2) });
+            await db.SaveChangesAsync();
+        }
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var cleanup = scope.ServiceProvider.GetRequiredService<UserSessionCleanup>();
+            Assert.Equal(2, await cleanup.PurgeExpiredAsync(now, default));
+            Assert.Equal(0, await cleanup.PurgeExpiredAsync(now, default));
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var remainingSessionIds = await db.UserSessions.Where(s => s.UserId == userId).Select(s => s.Id).ToListAsync();
+            Assert.DoesNotContain(expiredSessionId, remainingSessionIds);
+            Assert.DoesNotContain(oldRevokedId, remainingSessionIds);
+            Assert.Contains(activeSessionId, remainingSessionIds);
+            Assert.Contains(retainedRevokedId, remainingSessionIds);
+            var subscriptions = await db.PushSubscriptions.Where(s => s.UserId == userId).ToDictionaryAsync(s => s.Endpoint);
+            Assert.True(subscriptions[activeEndpoint].IsActive);
+            Assert.Equal(activeSessionId, subscriptions[activeEndpoint].SessionId);
+            Assert.False(subscriptions[expiredEndpoint].IsActive);
+            Assert.Null(subscriptions[expiredEndpoint].SessionId);
+            Assert.Equal(now, subscriptions[expiredEndpoint].DeactivatedAt);
+            Assert.Null(subscriptions[revokedEndpoint].SessionId);
+            Assert.Equal(previouslyRevoked, subscriptions[revokedEndpoint].DeactivatedAt);
+            Assert.Equal(expiredSubscriptionId, (await db.NotificationDeliveries.SingleAsync(d => d.Id == deliveryId)).SubscriptionId);
+        }
+
+        Assert.Equal(HttpStatusCode.OK, (await active.GetAsync("/api/auth/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await expired.GetAsync("/api/auth/me")).StatusCode);
+        await SubscribeAsync(active, expiredEndpoint, Keys());
+        using var check = _factory.Services.CreateScope();
+        var rebound = await check.ServiceProvider.GetRequiredService<AppDbContext>().PushSubscriptions.SingleAsync(s => s.Endpoint == expiredEndpoint);
+        Assert.Equal(expiredSubscriptionId, rebound.Id);
+        Assert.Equal(activeSessionId, rebound.SessionId);
+        Assert.True(rebound.IsActive);
+    }
+
+    [Fact]
+    public async Task Revocation_after_provider_acceptance_preserves_that_send_and_blocks_the_next_call()
+    {
+        var admin = NewClient();
+        var login = await TestAuth.LoginAsync(admin, AdminPhone);
+        var groupId = (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("memberships")[0].GetProperty("groupId").GetGuid();
+        var player = NewClient();
+        var (_, userId) = await RegisterAsync(player, "11963000012", "Revogação em voo");
+        const string first = "https://fcm.googleapis.com/fcm/send/revocation-first";
+        const string second = "https://fcm.googleapis.com/fcm/send/revocation-second";
+        await SubscribeAsync(player, first, Keys());
+        await SubscribeAsync(player, second, Keys());
+        var notificationId = Guid.NewGuid();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var campaign = new NotificationCampaign { Id = Guid.NewGuid(), GroupId = groupId, Title = "Teste", Body = "Teste", ActionUrl = "/" };
+            db.NotificationCampaigns.Add(campaign);
+            db.UserNotifications.Add(new UserNotification { Id = notificationId, GroupId = groupId, UserId = userId, CampaignId = campaign.Id,
+                Title = campaign.Title, Body = campaign.Body, ActionUrl = "/", PushState = NotificationPushState.Pending });
+            await db.SaveChangesAsync();
+        }
+
+        var store = _factory.Services.GetRequiredService<SimulatedWebPushStore>();
+        store.Overrides[first] = store.Overrides[second] = (_, _) =>
+        {
+            // O primeiro pedido já chegou ao provedor simulado. Mantém as inscrições
+            // ativas para provar que a revalidação da sessão é quem impede a segunda chamada.
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.UserSessions.Single(s => s.UserId == userId).RevokedAt = DateTimeOffset.UtcNow;
+            db.SaveChanges();
+            return new WebPushSendResult(WebPushSendOutcome.Sent, 201);
+        };
+        await _factory.Services.GetRequiredService<INotificationDispatchRunner>().ProcessPendingAsync();
+        var accepted = Assert.Single(store.Sent, s => s.Payload.Id == notificationId);
+        Assert.Equal(201, accepted.Result.StatusCode);
+        using var check = _factory.Services.CreateScope();
+        var checkDb = check.ServiceProvider.GetRequiredService<AppDbContext>();
+        var delivery = Assert.Single(await checkDb.NotificationDeliveries.Where(d => d.NotificationId == notificationId).ToListAsync());
+        Assert.Equal(accepted.SubscriptionId, delivery.SubscriptionId);
     }
 
     [Fact]

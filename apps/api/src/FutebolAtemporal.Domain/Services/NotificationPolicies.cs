@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using FutebolAtemporal.Domain.Exceptions;
@@ -89,17 +91,26 @@ public static class NotificationPolicies
         return trimmed;
     }
 
-    /// <summary>
-    /// Endereço IP aceitável como destino de push: só IP público. Bloqueia loopback, rede privada,
-    /// link-local (inclui metadados de nuvem 169.254.169.254), CGNAT, multicast e reservados.
-    /// Usado na conexão de saída, depois da resolução DNS (protege também contra DNS rebinding).
-    /// </summary>
-    public static bool IsPublicAddress(System.Net.IPAddress address)
-    {
-        if (address.IsIPv4MappedToIPv6) address = address.MapToIPv4();
-        if (System.Net.IPAddress.IsLoopback(address)) return false;
+    private static readonly IPNetwork GlobalIpv6 = IPNetwork.Parse("2000::/3");
 
-        if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+    // Política de saída de Web Push: prefixos de protocolo, transição e documentação
+    // da IANA não são destinos de provedores, inclusive suas subalocações de uso especial.
+    private static readonly IPNetwork[] SpecialIpv6 =
+    [
+        IPNetwork.Parse("2001::/23"),
+        IPNetwork.Parse("2001:db8::/32"),
+        IPNetwork.Parse("2002::/16"),
+        IPNetwork.Parse("2620:4f:8000::/48"),
+        IPNetwork.Parse("3fff::/20")
+    ];
+
+    /// <summary>Filtra o IP usado na conexão, depois da resolução DNS.</summary>
+    public static bool IsPublicAddress(IPAddress address)
+    {
+        if (address.AddressFamily == AddressFamily.InterNetworkV6 && address.ScopeId != 0) return false;
+        if (address.IsIPv4MappedToIPv6) address = address.MapToIPv4();
+
+        if (address.AddressFamily == AddressFamily.InterNetwork)
         {
             var b = address.GetAddressBytes();
             return !(b[0] == 0
@@ -108,22 +119,18 @@ public static class NotificationPolicies
                 || b[0] == 127
                 || (b[0] == 169 && b[1] == 254)                  // link-local / metadados
                 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31)
-                || (b[0] == 192 && b[1] == 0 && b[2] == 0)
+                || (b[0] == 192 && b[1] == 0 && (b[2] == 0 || b[2] == 2))
+                || (b[0] == 192 && b[1] == 88 && b[2] == 99)     // 6to4 anycast
                 || (b[0] == 192 && b[1] == 168)
-                || (b[0] == 198 && (b[1] == 18 || b[1] == 19))  // benchmark
-                || b[0] >= 224);                                 // multicast e reservados
+                || (b[0] == 198 && (b[1] == 18 || b[1] == 19))   // benchmark
+                || (b[0] == 198 && b[1] == 51 && b[2] == 100)    // documentação
+                || (b[0] == 203 && b[1] == 0 && b[2] == 113)
+                || b[0] >= 224);                                // multicast e reservados
         }
 
-        if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
-        {
-            if (address.IsIPv6LinkLocal || address.IsIPv6SiteLocal || address.IsIPv6Multicast || address.Equals(System.Net.IPAddress.IPv6None))
-                return false;
-            var b = address.GetAddressBytes();
-            if ((b[0] & 0xFE) == 0xFC) return false; // fc00::/7 (rede privada IPv6)
-            return true;
-        }
-
-        return false;
+        return address.AddressFamily == AddressFamily.InterNetworkV6
+            && GlobalIpv6.Contains(address)
+            && !SpecialIpv6.Any(prefix => prefix.Contains(address));
     }
 
     public static bool IsAllowedPushHost(string host)

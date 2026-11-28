@@ -124,35 +124,7 @@ public static class DependencyInjection
         services.AddHttpClient<LiveWebPushSender>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(10);
-        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            AllowAutoRedirect = false,
-            UseProxy = false,
-            // Checagem na conexão de saída, depois do DNS: só serviço de push permitido, porta 443 e IP público.
-            // Fecha o caminho para rede interna mesmo se o DNS de um host permitido apontar para IP privado.
-            ConnectCallback = async (context, ct) =>
-            {
-                var host = context.DnsEndPoint.Host;
-                if (context.DnsEndPoint.Port != 443 || !NotificationPolicies.IsAllowedPushHost(host))
-                    throw new HttpRequestException("Destino de push não autorizado.");
-
-                var addresses = await System.Net.Dns.GetHostAddressesAsync(host, ct);
-                var target = addresses.FirstOrDefault(NotificationPolicies.IsPublicAddress)
-                    ?? throw new HttpRequestException("Destino de push resolve para endereço não público.");
-
-                var socket = new System.Net.Sockets.Socket(target.AddressFamily, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp) { NoDelay = true };
-                try
-                {
-                    await socket.ConnectAsync(new System.Net.IPEndPoint(target, 443), ct);
-                    return new System.Net.Sockets.NetworkStream(socket, ownsSocket: true);
-                }
-                catch
-                {
-                    socket.Dispose();
-                    throw;
-                }
-            }
-        })
+        }).ConfigurePrimaryHttpMessageHandler(() => WebPushTransport.CreateHandler(System.Net.Dns.GetHostAddressesAsync))
         // A URL da inscrição identifica o aparelho (RFC 8030 §8.3): não registrar requisições do cliente de push.
         .RemoveAllLoggers();
         services.AddScoped<SimulatedWebPushSender>();
@@ -167,6 +139,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
         services.AddScoped<INotificationTriggerService>(sp => sp.GetRequiredService<NotificationService>());
         services.AddSingleton<INotificationDispatchRunner, NotificationDispatchRunner>();
+        services.AddScoped<UserSessionCleanup>();
         services.AddHostedService<NotificationDispatcher>();
         services.AddScoped<IMercadoPagoClient>(sp =>
         {
