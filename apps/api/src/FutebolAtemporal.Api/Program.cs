@@ -1,3 +1,4 @@
+using FutebolAtemporal.Api;
 ﻿using FutebolAtemporal.Domain.Exceptions;
 using FutebolAtemporal.Infrastructure;
 using FutebolAtemporal.Infrastructure.Persistence;
@@ -8,10 +9,7 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((ctx, cfg) =>
-    cfg.ReadFrom.Configuration(ctx.Configuration)
-        .Enrich.FromLogContext()
-        .WriteTo.Console());
+builder.Host.UseSerilog((ctx, cfg) => ApiLogging.Configure(cfg, ctx.Configuration));
 
 builder.Services.AddInfrastructure(builder.Configuration);
 // A web envia e recebe estados como texto ("RegistrationClosed", "Inactive", "Paid"); números seguem aceitos.
