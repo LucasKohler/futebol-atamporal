@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 ﻿using System.Security.Claims;
 using FutebolAtemporal.Application.Draws;
 using FutebolAtemporal.Application.Matches;
@@ -65,8 +66,32 @@ public sealed class MatchesController : ControllerBase
         => Ok(await _matches.TransitionAsync(User.GetUserId(), matchId, body.Status, ct));
 
     [HttpPost("{matchId:guid}/join")]
-    public async Task<ActionResult<MatchDetailDto>> Join(Guid matchId, CancellationToken ct)
-        => Ok(await _registrations.JoinAsync(User.GetUserId(), matchId, ct));
+    public async Task<ActionResult<MatchDetailDto>> Join(
+        Guid matchId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] JoinMatchRequest? request, CancellationToken ct)
+        => Ok(await _registrations.JoinAsync(User.GetUserId(), matchId, request, ct));
+
+    [HttpPut("{matchId:guid}/registration-windows")]
+    public async Task<ActionResult<MatchDetailDto>> UpdateRegistrationWindows(
+        Guid matchId, UpdateRegistrationWindowsRequest request, CancellationToken ct)
+        => Ok(await _registrations.UpdateWindowsAsync(User.GetUserId(), matchId, request, ct));
+
+    [HttpPost("{matchId:guid}/waitlist/move")]
+    public async Task<ActionResult<MatchDetailDto>> MoveWaitlist(Guid matchId, MoveWaitlistRequest request, CancellationToken ct)
+        => Ok(await _registrations.MoveAsync(User.GetUserId(), matchId, request, ct));
+
+    [HttpPost("{matchId:guid}/registrations/admin-enroll")]
+    public async Task<ActionResult<MatchDetailDto>> AdminEnroll(Guid matchId, AdminEnrollRequest request, CancellationToken ct)
+        => Ok(await _registrations.AdminEnrollAsync(User.GetUserId(), matchId, request, ct));
+
+    [HttpPost("{matchId:guid}/registrations/{playerProfileId:guid}/status")]
+    public async Task<ActionResult<MatchDetailDto>> AdjustRegistrationStatus(
+        Guid matchId, Guid playerProfileId, AdjustRegistrationStatusRequest request, CancellationToken ct)
+        => Ok(await _registrations.AdjustStatusAsync(User.GetUserId(), matchId, playerProfileId, request, ct));
+
+    [HttpGet("{matchId:guid}/waitlist/audit")]
+    public async Task<ActionResult<IReadOnlyList<WaitlistAuditDto>>> WaitlistAudit(
+        Guid matchId, CancellationToken ct, [FromQuery] int limit = 20, [FromQuery] int offset = 0)
+        => Ok(await _registrations.GetAuditAsync(User.GetUserId(), matchId, limit, offset, ct));
 
     [HttpPost("{matchId:guid}/leave")]
     public async Task<ActionResult<MatchDetailDto>> Leave(Guid matchId, CancellationToken ct)

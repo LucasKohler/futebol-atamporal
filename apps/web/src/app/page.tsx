@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { AdminLoading, StatusBadge } from "@/components/admin/AdminCard";
@@ -9,6 +9,8 @@ import { PaymentsLink } from "@/components/pix/PaymentsLink";
 import { formatMoney } from "@/lib/adminFilters";
 import { api, MatchDetail, MyMatchDayPayment } from "@/lib/api";
 import { homePlan, spotsText, whenText, type MatchStage } from "@/lib/homeStage";
+import { registrationWindowMessage } from "@/lib/registrationWindows";
+import { useRegistrationWindowRefresh } from "@/lib/useRegistrationWindowRefresh";
 import { dueAtText } from "@/lib/pix";
 import { playerDisplayName } from "@/lib/playerDisplayName";
 import { matchStatusLabel, registrationStatusLabel, useSession } from "@/lib/useSession";
@@ -45,6 +47,12 @@ export default function HomePage() {
       .catch(() => setFees(null));
   }, [group]);
 
+  const refreshWindow = useCallback(async (matchId: string) => {
+    const updated = await api.getMatch(matchId);
+    setUpcoming((current) => current?.match.id === matchId && (current.version ?? 0) <= (updated.version ?? 0) ? updated : current);
+  }, []);
+  useRegistrationWindowRefresh(upcoming, refreshWindow);
+
   if (loading) {
     return (
       <div role="status" className="flex min-h-dvh items-center justify-center text-fg-secondary">
@@ -66,8 +74,9 @@ export default function HomePage() {
     setMsg(null);
     setNotice(null);
     try {
-      setUpcoming(joined ? await api.leaveMatch(upcoming.match.id) : await api.joinMatch(upcoming.match.id));
-      setNotice(joined ? "Você saiu da lista." : "Presença confirmada.");
+      const updated = joined ? await api.leaveMatch(upcoming.match.id) : await api.joinMatch(upcoming.match.id);
+      setUpcoming(updated);
+      setNotice(joined ? "Você saiu da lista." : updated.myStatus === "Waitlisted" ? "Você entrou na fila de espera." : "Presença confirmada.");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Não foi possível atualizar sua presença.");
     } finally {
@@ -201,7 +210,8 @@ function StageCard({
     );
   }
 
-  const { match, myStatus, myWaitlistPosition } = stage.detail;
+  const { match, myStatus, myWaitlistPosition, registrationWindows, groupTimeZoneId } = stage.detail;
+  const windowNotice = registrationWindows ? registrationWindowMessage(registrationWindows, groupTimeZoneId ?? timeZone ?? "UTC") : null;
   const header = (
     <>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -227,13 +237,18 @@ function StageCard({
               {myWaitlistPosition ? <strong> · {myWaitlistPosition}º na fila</strong> : null}.
             </>
           ) : (
-            "Vai jogar? Confirme sua presença."
+            windowNotice ?? "Vai jogar? Confirme sua presença."
           )}
         </p>
         <div className="mt-md flex flex-wrap gap-2">
-          <button type="button" disabled={busy} onClick={() => onToggle(stage.joined)} className={stage.joined ? secondaryButton : `${btn} w-full sm:w-auto`}>
-            {busy ? "Salvando…" : stage.joined ? "Sair da lista" : "Confirmar presença"}
-          </button>
+          {!stage.joined && registrationWindows?.isAdminEarlyBypass ? (
+            <Link href="/partida" className={btn}>Entrar antes na fila</Link>
+          ) : (
+            <button type="button" disabled={busy || (!stage.joined && registrationWindows?.canJoinNow === false)}
+              onClick={() => onToggle(stage.joined)} className={stage.joined ? secondaryButton : `${btn} w-full sm:w-auto`}>
+              {busy ? "Salvando…" : stage.joined ? "Sair da lista" : "Confirmar presença"}
+            </button>
+          )}
           <Link href="/partida" className={secondaryButton}>
             Ver lista
           </Link>
@@ -277,7 +292,7 @@ function StageCard({
 function stageEyebrow(stage: MatchStage): string {
   switch (stage.kind) {
     case "confirm":
-      return "Inscrições abertas";
+      return stage.detail.registrationWindows?.canJoinNow === false && !stage.joined ? "Inscrições agendadas" : "Inscrições abertas";
     case "closed":
       return "Inscrições encerradas";
     case "play":

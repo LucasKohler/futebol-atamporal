@@ -6,8 +6,11 @@ import { AppShell } from "@/components/AppShell";
 import { PaymentsLink } from "@/components/pix/PaymentsLink";
 import { PublicLiveDay } from "@/components/live/PublicLiveDay";
 import { AdminConfirmButton } from "@/components/admin/AdminDrawer";
+import { RegistrationControls, RegistrationReasonDialog } from "@/components/admin/RegistrationControls";
+import { formatRegistrationTime, registrationWindowMessage } from "@/lib/registrationWindows";
+import { useRegistrationWindowRefresh } from "@/lib/useRegistrationWindowRefresh";
 import { AdminSearch } from "@/components/admin/AdminSearch";
-import { focusRing, primaryButton, secondaryButton } from "@/components/admin/ui";
+import { focusRing, inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
 import { filterRegistrations } from "@/lib/adminFilters";
 import { api, Draw, MatchDetail, MatchSummary } from "@/lib/api";
 import { AdminIcon } from "@/components/admin/AdminIcon";
@@ -32,7 +35,10 @@ function formatWhen(iso: string, timeZone?: string) {
 }
 
 export default function PartidaPage() {
-  const { user, group, loading, error, isAdmin } = useSession();
+  const { user, group, loading, error } = useSession();
+  const isAdmin = !!group && !!user?.memberships.some(
+    (membership) => membership.groupId === group.id && membership.role === "Admin" && membership.status === "Active",
+  );
   const [detail, setDetail] = useState<MatchDetail | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -43,6 +49,9 @@ export default function PartidaPage() {
   /** Sorteio como está (prévia ou confirmado), só para o stepper do admin. */
   const [rawDraw, setRawDraw] = useState<Draw | null>(null);
   const [query, setQuery] = useState("");
+  const [earlyJoin, setEarlyJoin] = useState(false);
+  const [matchChoices, setMatchChoices] = useState<MatchSummary[]>([]);
+  const [chosenMatchId, setChosenMatchId] = useState("");
 
   /** Só a escalação confirmada e ainda válida aparece na tela da partida. */
   const loadDraw = useCallback(async (matchId: string) => {
@@ -53,7 +62,7 @@ export default function PartidaPage() {
 
   const reload = useCallback(
     async (groupId: string) => {
-      const d = await api.upcomingMatch(groupId);
+      const d = chosenMatchId ? await api.getMatch(chosenMatchId) : await api.upcomingMatch(groupId);
       setDetail(d);
       if (d) await loadDraw(d.match.id);
       else {
@@ -62,7 +71,7 @@ export default function PartidaPage() {
       }
       setLoaded(true);
     },
-    [loadDraw],
+    [chosenMatchId, loadDraw],
   );
 
   useEffect(() => {
@@ -72,6 +81,21 @@ export default function PartidaPage() {
       setLoaded(true);
     });
   }, [group, reload]);
+
+  useEffect(() => {
+    if (!isAdmin || !group) return;
+    let active = true;
+    api.listMatches(group.id).then((choices) => { if (active) setMatchChoices(choices); }).catch((error) => {
+      if (active) setMsg(error instanceof Error ? error.message : "Não foi possível listar as partidas.");
+    });
+    return () => { active = false; };
+  }, [group, isAdmin]);
+
+  const refreshWindow = useCallback(async (matchId: string) => {
+    const updated = await api.getMatch(matchId);
+    setDetail((current) => current?.match.id === matchId && (current.version ?? 0) <= (updated.version ?? 0) ? updated : current);
+  }, []);
+  useRegistrationWindowRefresh(detail, refreshWindow);
 
   /** Executa uma ação, mostra o estado persistido devolvido pela API e anuncia o resultado. */
   async function run(action: () => Promise<MatchDetail | void>, success: string) {
@@ -100,6 +124,9 @@ export default function PartidaPage() {
   const canJoin = !detail?.myStatus || detail.myStatus === "Withdrawn" || detail.myStatus === "Removed";
   // Mesma política da API: depois do início, ninguém sai nem é removido (elenco preservado).
   const frozen = match ? isLineupFrozen(match.status) : false;
+  const windows = detail?.registrationWindows;
+  const zone = detail?.groupTimeZoneId ?? group?.timeZoneId ?? "UTC";
+  const windowNotice = windows ? registrationWindowMessage(windows, zone) : null;
 
   return (
     <AppShell>
@@ -109,6 +136,18 @@ export default function PartidaPage() {
           <h1 className="text-headline-lg">Próxima pelada</h1>
         </div>
 
+        {isAdmin && matchChoices.length > 0 ? <label className="flex flex-col gap-1">
+          Partida para administrar
+          <select className={inputClass} value={chosenMatchId} disabled={busy} onChange={(event) => {
+            setLoaded(false);
+            setEarlyJoin(false);
+            setChosenMatchId(event.target.value);
+            setQuery("");
+          }}>
+            <option value="">Próxima partida</option>
+            {matchChoices.map((m) => <option key={m.id} value={m.id}>{formatWhen(m.startsAt, zone)} · {m.title || "Partida"}</option>)}
+          </select>
+        </label> : null}
         {isAdmin && detail ? <AdminRoundBar match={detail.match} draw={rawDraw} /> : null}
 
         <div aria-live="polite" role="status" className="sr-only">
@@ -128,9 +167,10 @@ export default function PartidaPage() {
             {isAdmin && group ? (
               <CreateMatchForm
                 groupId={group.id}
-                onCreated={async () => {
-                  await reload(group.id);
-                  setNotice("Partida criada e lista aberta.");
+                onCreated={(created) => {
+                  setChosenMatchId(created.id);
+                  setMatchChoices((current) => [created, ...current]);
+                  setNotice(created.status === "Draft" ? "Rascunho criado. Configure as aberturas antes de liberar as inscrições." : "Partida criada e lista aberta.");
                 }}
               />
             ) : null}
@@ -167,15 +207,24 @@ export default function PartidaPage() {
                 <p className="mt-1 text-body-md text-on-surface-variant">Você ainda não está na lista.</p>
               )}
 
+              {windows?.isConfigured && windows.monthlyOpensAt && windows.casualOpensAt ? (
+                <p className="mt-sm text-body-md text-on-surface-variant">
+                  Mensalistas: {formatRegistrationTime(windows.monthlyOpensAt, zone)} · Geral: {formatRegistrationTime(windows.casualOpensAt, zone)} ({zone})
+                </p>
+              ) : null}
+              {canJoin && windowNotice ? <p className="mt-sm text-body-md" role="status">{windowNotice}</p> : null}
               <div className="mt-lg flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 {canJoin ? (
                   <button
                     type="button"
-                    disabled={busy || match.status !== "RegistrationOpen"}
-                    onClick={() => run(() => api.joinMatch(match.id), "Você entrou na lista.")}
+                    disabled={busy || !(windows?.canJoinNow ?? (match.status === "RegistrationOpen"))}
+                    onClick={() => {
+                      if (windows?.isAdminEarlyBypass) setEarlyJoin(true);
+                      else void run(() => api.joinMatch(match.id), "Inscrição registrada.");
+                    }}
                     className={primaryButton}
                   >
-                    Entrar na lista
+                    {windows?.isAdminEarlyBypass ? "Entrar antes na fila" : "Entrar na lista"}
                   </button>
                 ) : frozen ? (
                   <p className="text-body-md text-on-surface-variant">
@@ -218,10 +267,23 @@ export default function PartidaPage() {
             <section className="rounded-xl border-l-4 border-pitch-green-container bg-surface-container-low p-md">
               <h3 className="text-label-md">Ordem da fila</h3>
               <p className="mt-1 text-body-md text-on-surface-variant">
-                Mensalistas ativos (adimplentes ou pendentes) ficam à frente na fila; depois vale a ordem de chegada. Quem
-                desiste libera a vaga para o 1º da fila.
+                As inscrições entram no fim da fila. Vagas liberadas seguem a posição atual. Em exceções, o admin pode ajustar a ordem.
               </p>
             </section>
+
+            {isAdmin ? <RegistrationControls key={match.id} detail={detail} ownId={user?.playerProfileId}
+              locked={frozen || match.status === "Cancelled" || match.status === "Completed"}
+              onChanged={(updated) => { setDetail(updated); void loadDraw(updated.match.id); }} /> : null}
+            {earlyJoin ? <RegistrationReasonDialog title="Entrar antes na fila de espera" onCancel={() => setEarlyJoin(false)}
+              onSubmit={async (reason) => {
+                const joined = await api.joinMatch(match.id, reason);
+                setDetail(joined);
+                setEarlyJoin(false);
+                setNotice(joined.myStatus === "Waitlisted" ? "Você entrou na fila de espera." : "Inscrição registrada.");
+                void loadDraw(match.id);
+              }}>
+              <p>Se a sua janela ainda estiver fechada, você entrará no fim da fila de espera. O motivo ficará no histórico do grupo.</p>
+            </RegistrationReasonDialog> : null}
 
             {isAdmin && detail.confirmed.length + detail.waitlist.length >= SEARCH_THRESHOLD ? (
               <AdminSearch
@@ -389,8 +451,9 @@ function PlayerList({
 
 /** "2026-11-28T10:00" no fuso do aparelho, para o campo datetime-local (mesma regra do formulário de criação). */
 
-function CreateMatchForm({ groupId, onCreated }: { groupId: string; onCreated: () => Promise<void> }) {
+function CreateMatchForm({ groupId, onCreated }: { groupId: string; onCreated: (match: MatchSummary) => void }) {
   const [location, setLocation] = useState("Arena Central");
+  const [openRegistrations, setOpenRegistrations] = useState(true);
   const [limit, setLimit] = useState(14);
   const [when, setWhen] = useState(() => {
     const d = new Date();
@@ -409,15 +472,15 @@ function CreateMatchForm({ groupId, onCreated }: { groupId: string; onCreated: (
         setBusy(true);
         setFormError(null);
         try {
-          await api.createMatch({
+          const created = await api.createMatch({
             groupId,
             title: "Pelada semanal",
             startsAt: new Date(when).toISOString(),
             location,
             playerLimit: limit,
-            openRegistrations: true,
+            openRegistrations,
           });
-          await onCreated();
+          onCreated(created);
         } catch (err) {
           setFormError(err instanceof Error ? err.message : "Erro ao criar partida");
         } finally {
@@ -452,13 +515,16 @@ function CreateMatchForm({ groupId, onCreated }: { groupId: string; onCreated: (
           onChange={(e) => setLimit(Number(e.target.value))}
         />
       </label>
+      <label className="text-label-md">
+        <input type="checkbox" checked={openRegistrations} onChange={(e) => setOpenRegistrations(e.target.checked)} /> Abrir a lista imediatamente
+      </label>
       {formError ? (
         <p role="alert" className="rounded-lg bg-error-container p-3 text-on-error-container">
           {formError}
         </p>
       ) : null}
       <button type="submit" disabled={busy} className={primaryButton}>
-        Criar partida e abrir lista
+        {openRegistrations ? "Criar partida e abrir lista" : "Criar rascunho para configurar aberturas"}
       </button>
     </form>
   );

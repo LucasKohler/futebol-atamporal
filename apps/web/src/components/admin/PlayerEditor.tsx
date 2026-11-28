@@ -167,7 +167,7 @@ export function PlayerEditor({
             confirmLabel="Desativar"
             disabled={busy}
             onConfirm={() =>
-              membershipAction(() => api.setMemberStatus(groupId, membership.id, "Inactive"), "Vínculo desativado. A prioridade na fila deixa de valer.")
+              membershipAction(() => api.setMemberStatus(groupId, membership.id, "Inactive"), "Vínculo desativado. O jogador passa a usar a janela geral de inscrição.")
             }
           />
         ) : player.isMonthlyMember ? (

@@ -53,6 +53,8 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("GroupId", "CreatedAt");
 
+                    b.HasIndex("EntityType", "EntityId", "CreatedAt");
+
                     b.ToTable("AuditEntries");
                 });
 
@@ -131,6 +133,9 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTimeOffset?>("CasualRegistrationOpensAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -140,6 +145,9 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("MonthlyRegistrationOpensAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Notes")

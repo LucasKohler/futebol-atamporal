@@ -59,7 +59,7 @@ public static class RegistrationPolicy
         => status is MatchStatus.InProgress or MatchStatus.AwaitingClose;
 }
 
-/// <summary>FIFO por capacidade. Mensalistas só afetam ordem na promoção da fila.</summary>
+/// <summary>A posição persistida governa a ordem da fila.</summary>
 public static class WaitlistLogic
 {
     public static (RegistrationStatus Status, int? WaitlistPosition) Place(int confirmedCount, int playerLimit, int currentWaitlistCount)
@@ -70,14 +70,14 @@ public static class WaitlistLogic
     }
 
     /// <summary>
-    /// Ordem publicada da fila: mensalista elegível antes de avulso; depois ordem de chegada na fila.
+    /// A categoria de inscrição não altera a ordem publicada.
     /// A posição exibida é a mesma ordem usada na promoção.
     /// </summary>
     public static IEnumerable<MatchRegistration> QueueOrder(IEnumerable<MatchRegistration> registrations)
         => registrations
             .Where(r => r.Status == RegistrationStatus.Waitlisted)
-            .OrderByDescending(r => r.PriorityClass)
-            .ThenBy(r => r.WaitlistPosition ?? int.MaxValue)
+            .OrderBy(r => r.WaitlistPosition ?? int.MaxValue)
+            .ThenBy(r => r.UpdatedAt)
             .ThenBy(r => r.CreatedAt)
             .ThenBy(r => r.Id);
 
@@ -92,16 +92,46 @@ public static class WaitlistLogic
         foreach (var next in QueueOrder(registrations).ToList())
         {
             if (confirmed >= playerLimit) break;
-            next.Status = RegistrationStatus.Confirmed;
-            next.WaitlistPosition = null;
-            next.ConfirmedAt = now;
-            next.UpdatedAt = now;
+            Confirm(next, now);
             confirmed++;
             promoted.Add(next);
         }
 
+        Renumber(QueueOrder(registrations), now);
+
+        foreach (var inactive in registrations.Where(r => r.Status != RegistrationStatus.Waitlisted && r.WaitlistPosition is not null))
+            inactive.WaitlistPosition = null;
+
+        return promoted;
+    }
+
+    public static void Confirm(MatchRegistration registration, DateTimeOffset now)
+    {
+        registration.Status = RegistrationStatus.Confirmed;
+        registration.WaitlistPosition = null;
+        registration.ConfirmedAt = now;
+        registration.UpdatedAt = now;
+    }
+
+    public static void SetPosition(
+        IReadOnlyList<MatchRegistration> registrations, MatchRegistration registration, int? position, DateTimeOffset now)
+    {
+        var queue = QueueOrder(registrations).Where(r => r != registration).ToList();
+        var target = position ?? queue.Count + 1;
+        if (target < 1 || target > queue.Count + 1)
+            throw new DomainException("Posição da fila inválida.");
+
+        registration.Status = RegistrationStatus.Waitlisted;
+        registration.ConfirmedAt = null;
+        registration.UpdatedAt = now;
+        queue.Insert(target - 1, registration);
+        Renumber(queue, now);
+    }
+
+    public static void Renumber(IEnumerable<MatchRegistration> queue, DateTimeOffset now)
+    {
         var position = 1;
-        foreach (var waiting in QueueOrder(registrations).ToList())
+        foreach (var waiting in queue)
         {
             if (waiting.WaitlistPosition != position)
             {
@@ -110,11 +140,6 @@ public static class WaitlistLogic
             }
             position++;
         }
-
-        foreach (var inactive in registrations.Where(r => r.Status != RegistrationStatus.Waitlisted && r.WaitlistPosition is not null))
-            inactive.WaitlistPosition = null;
-
-        return promoted;
     }
 }
 

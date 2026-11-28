@@ -12,7 +12,13 @@ public sealed class MatchService : IMatchService
 {
     private readonly AppDbContext _db;
 
-    public MatchService(AppDbContext db) => _db = db;
+    private readonly TimeProvider _clock;
+
+    public MatchService(AppDbContext db, TimeProvider clock)
+    {
+        _db = db;
+        _clock = clock;
+    }
 
     public async Task<MatchDto> CreateAsync(Guid userId, CreateMatchRequest request, CancellationToken ct = default)
     {
@@ -54,14 +60,17 @@ public sealed class MatchService : IMatchService
         if (request.PlayerLimit < confirmed)
             throw new DomainException($"Há {confirmed} confirmados. Remova inscrições antes de reduzir o limite para {request.PlayerLimit}.");
 
+        RegistrationWindowPolicy.Validate(match.MonthlyRegistrationOpensAt, match.CasualRegistrationOpensAt, request.StartsAt);
+        var capacityIncreased = request.PlayerLimit > match.PlayerLimit;
         match.Title = request.Title;
         match.StartsAt = request.StartsAt;
         match.Location = request.Location.Trim();
         match.PlayerLimit = request.PlayerLimit;
         match.Notes = request.Notes;
-        match.UpdatedAt = DateTimeOffset.UtcNow;
+        match.UpdatedAt = _clock.GetUtcNow();
         // Limite maior promove a fila na ordem publicada.
-        WaitlistLogic.Rebalance(regs, match.PlayerLimit, match.UpdatedAt.Value);
+        if (capacityIncreased)
+            WaitlistLogic.Rebalance(regs, match.PlayerLimit, match.UpdatedAt.Value);
         // Promoção por aumento de limite depois do sorteio invalida a escalação confirmada.
         await DrawRosterGuard.InvalidateIfRosterChangedAsync(
             _db, match, regs.Where(r => r.Status == RegistrationStatus.Confirmed).Select(r => r.PlayerProfileId), ct);
@@ -77,7 +86,7 @@ public sealed class MatchService : IMatchService
         await AccessHelper.RequireAdminForMatchAsync(_db, userId, match, ct);
         MatchTransitions.EnsureTransition(match.Status, target);
         match.Status = target;
-        match.UpdatedAt = DateTimeOffset.UtcNow;
+        match.UpdatedAt = _clock.GetUtcNow();
         match.Version++;
         await _db.SaveChangesAsync(ct);
         return await ToDtoAsync(match, ct);
@@ -94,7 +103,7 @@ public sealed class MatchService : IMatchService
     public async Task<MatchDetailDto?> GetUpcomingAsync(Guid userId, Guid groupId, CancellationToken ct = default)
     {
         await AccessHelper.RequireMemberAsync(_db, userId, groupId, ct);
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.GetUtcNow();
         var candidates = await _db.Matches.AsNoTracking()
             .Where(m => m.GroupId == groupId && m.Status != MatchStatus.Cancelled && m.Status != MatchStatus.Completed)
             .ToListAsync(ct);
@@ -153,13 +162,29 @@ public sealed class MatchService : IMatchService
 
         var profile = await _db.PlayerProfiles.AsNoTracking().FirstAsync(p => p.UserId == userId, ct);
         var mine = regs.FirstOrDefault(r => r.PlayerProfileId == profile.Id);
+        var groupTimeZoneId = await _db.FootballGroups.AsNoTracking().Where(g => g.Id == match.GroupId)
+            .Select(g => g.TimeZoneId).SingleAsync(ct);
+        var now = _clock.GetUtcNow();
+        var monthly = await RegistrationEligibility.IsMonthlyAsync(_db, match.GroupId, profile.Id, now, ct);
+        var opensAt = RegistrationWindowPolicy.OpensAt(match, monthly);
+        var early = RegistrationWindowPolicy.IsEarly(opensAt, now);
+        var open = match.Status == MatchStatus.RegistrationOpen;
+        var bypass = open && early && isAdmin;
+        var reason = !open ? "STATUS_CLOSED" : bypass ? "ADMIN_EARLY_ACCESS" : !early ? null
+            : match.MonthlyRegistrationOpensAt <= now ? "CASUAL_WINDOW_NOT_OPEN" : "WINDOW_NOT_OPEN_YET";
+        var windows = new RegistrationWindowsDto(
+            match.MonthlyRegistrationOpensAt.HasValue, match.MonthlyRegistrationOpensAt, match.CasualRegistrationOpensAt,
+            now, monthly ? "Monthly" : "Casual", bypass, open && (!early || bypass), opensAt, reason);
 
         return new MatchDetailDto(
             ToDto(match, confirmed.Count, waitlist.Count),
             mine?.Status.ToString(),
             mine?.WaitlistPosition,
             confirmed,
-            waitlist);
+            waitlist,
+            match.Version,
+            groupTimeZoneId,
+            windows);
     }
 
     private async Task<MatchDto> ToDtoAsync(Match match, CancellationToken ct)

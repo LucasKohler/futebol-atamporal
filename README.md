@@ -72,6 +72,20 @@ docker compose up -d --build
 
 Com Compose, a API usa PostgreSQL (`Database__UseSqlite=false`).
 
+## Migrations do banco
+
+Configure a conexão de destino em `ConnectionStrings__Default`. A partir da raiz do repositório, escolha o contexto do mesmo provedor:
+
+```bash
+# PostgreSQL
+Database__UseSqlite=false dotnet ef database update --project apps/api/src/FutebolAtemporal.Infrastructure --startup-project apps/api/src/FutebolAtemporal.Api --context PostgresAppDbContext
+
+# SQLite
+Database__UseSqlite=true dotnet ef database update --project apps/api/src/FutebolAtemporal.Infrastructure --startup-project apps/api/src/FutebolAtemporal.Api --context AppDbContext
+```
+
+Ao alterar o modelo, gere e valide a migration para os dois contextos. A primeira migration nativa do PostgreSQL exige um esquema da aplicação vazio. Para um PostgreSQL que já tenha tabelas da aplicação ou histórico de migrations, restaure uma cópia e compare os tipos, as restrições e o histórico com a linha de base nativa antes de planejar a adoção.
+
 ## Testes e qualidade
 
 ```bash

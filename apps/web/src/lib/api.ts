@@ -73,6 +73,40 @@ export type MatchDetail = {
   myWaitlistPosition?: number | null;
   confirmed: RegistrationPlayer[];
   waitlist: RegistrationPlayer[];
+  version?: number;
+  groupTimeZoneId?: string;
+  registrationWindows?: RegistrationWindows;
+};
+
+export type RegistrationWindows = {
+  isConfigured: boolean;
+  monthlyOpensAt: string | null;
+  casualOpensAt: string | null;
+  serverNowUtc: string;
+  myEligibility: "Monthly" | "Casual";
+  isAdminEarlyBypass: boolean;
+  canJoinNow: boolean;
+  myOpensAt: string | null;
+  reasonCode: "ADMIN_EARLY_ACCESS" | "WINDOW_NOT_OPEN_YET" | "CASUAL_WINDOW_NOT_OPEN" | "STATUS_CLOSED" | null;
+};
+
+export type WaitlistPlacement = "Auto" | "Waitlist" | "Confirmed";
+type WaitlistChange = { expectedVersion: number; reason: string };
+type WaitlistSnapshot = {
+  monthlyRegistrationOpensAt: string | null;
+  casualRegistrationOpensAt: string | null;
+  confirmed: string[];
+  waitlist: { playerProfileId: string; waitlistPosition: number }[];
+};
+export type WaitlistAuditEvent = {
+  id: string;
+  actorUserId: string;
+  createdAt: string;
+  action: string;
+  reason: string;
+  version: number;
+  before: WaitlistSnapshot;
+  after: WaitlistSnapshot;
 };
 
 export type MonthlyMember = {
@@ -683,10 +717,28 @@ export const api = {
       body: JSON.stringify({ status }),
     }).then((r) => parseJson<MatchSummary>(r));
   },
-  joinMatch(matchId: string) {
-    return fetch(url(`/api/matches/${matchId}/join`), { method: "POST", credentials: "include" }).then((r) =>
-      parseJson<MatchDetail>(r),
-    );
+  joinMatch(matchId: string, reason?: string) {
+    return send<MatchDetail>("POST", `/api/matches/${matchId}/join`, reason === undefined ? undefined : { reason });
+  },
+  updateRegistrationWindows(matchId: string, body: WaitlistChange & { monthlyOpensAt: string | null; casualOpensAt: string | null }) {
+    return send<MatchDetail>("PUT", `/api/matches/${matchId}/registration-windows`, body);
+  },
+  moveWaitlist(matchId: string, body: WaitlistChange & { playerProfileId: string; targetPosition: number }) {
+    return send<MatchDetail>("POST", `/api/matches/${matchId}/waitlist/move`, body);
+  },
+  adminEnroll(matchId: string, body: WaitlistChange & {
+    playerProfileId: string; placement: WaitlistPlacement; targetWaitlistPosition?: number; demotePlayerProfileId?: string;
+  }) {
+    return send<MatchDetail>("POST", `/api/matches/${matchId}/registrations/admin-enroll`, body);
+  },
+  adjustRegistrationStatus(matchId: string, playerProfileId: string, body: WaitlistChange & {
+    targetStatus: "Confirmed" | "Waitlisted"; targetWaitlistPosition?: number;
+    promoteNext?: boolean; demotePlayerProfileId?: string; demoteToPosition?: number;
+  }) {
+    return send<MatchDetail>("POST", `/api/matches/${matchId}/registrations/${playerProfileId}/status`, body);
+  },
+  waitlistAudit(matchId: string, limit: number, offset: number) {
+    return send<WaitlistAuditEvent[]>("GET", `/api/matches/${matchId}/waitlist/audit?limit=${limit}&offset=${offset}`);
   },
   leaveMatch(matchId: string) {
     return fetch(url(`/api/matches/${matchId}/leave`), { method: "POST", credentials: "include" }).then((r) =>

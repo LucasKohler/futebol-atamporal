@@ -10,6 +10,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
+    protected AppDbContext(DbContextOptions options) : base(options) { }
+
     public DbSet<FootballGroup> FootballGroups => Set<FootballGroup>();
     public DbSet<GroupMembership> GroupMemberships => Set<GroupMembership>();
     public DbSet<PlayerProfile> PlayerProfiles => Set<PlayerProfile>();
@@ -192,6 +194,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         {
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.GroupId, x.CreatedAt });
+            e.HasIndex(x => new { x.EntityType, x.EntityId, x.CreatedAt });
             e.Property(x => x.Action).HasMaxLength(80).IsRequired();
             e.Property(x => x.EntityType).HasMaxLength(80).IsRequired();
             e.Property(x => x.PayloadJson).HasColumnType("text");

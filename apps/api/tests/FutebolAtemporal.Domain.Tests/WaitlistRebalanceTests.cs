@@ -58,7 +58,7 @@ public class WaitlistRebalanceTests
     }
 
     [Fact]
-    public void Monthly_member_is_ahead_in_published_queue_and_promoted_first()
+    public void Persisted_position_wins_over_monthly_category()
     {
         var c1 = Reg(RegistrationStatus.Confirmed);
         var casual = Reg(RegistrationStatus.Waitlisted, 1, minute: 1);
@@ -66,13 +66,28 @@ public class WaitlistRebalanceTests
         var regs = new List<MatchRegistration> { c1, casual, monthly };
 
         WaitlistLogic.Rebalance(regs, playerLimit: 1, T0);
-        Assert.Equal(1, monthly.WaitlistPosition);
-        Assert.Equal(2, casual.WaitlistPosition);
+        Assert.Equal(1, casual.WaitlistPosition);
+        Assert.Equal(2, monthly.WaitlistPosition);
 
         c1.Status = RegistrationStatus.Removed;
         var promoted = WaitlistLogic.Rebalance(regs, playerLimit: 1, T0);
-        Assert.Equal([monthly], promoted);
-        Assert.Equal(1, casual.WaitlistPosition);
+        Assert.Equal([casual], promoted);
+        Assert.Equal(1, monthly.WaitlistPosition);
+    }
+
+    [Fact]
+    public void Reentry_appends_and_manual_move_controls_next_promotion()
+    {
+        var first = Reg(RegistrationStatus.Waitlisted, 1, minute: 2);
+        var second = Reg(RegistrationStatus.Waitlisted, 2, minute: 3);
+        var returned = Reg(RegistrationStatus.Withdrawn, priority: PriorityClass.Monthly);
+        var regs = new List<MatchRegistration> { first, second, returned };
+
+        WaitlistLogic.SetPosition(regs, returned, null, T0);
+        Assert.Equal(3, returned.WaitlistPosition);
+        WaitlistLogic.SetPosition(regs, second, 1, T0);
+        Assert.Equal([second], WaitlistLogic.Rebalance(regs, 1, T0));
+        Assert.Equal(new int?[] { 1, 2 }, WaitlistLogic.QueueOrder(regs).Select(r => r.WaitlistPosition));
     }
 
     [Fact]

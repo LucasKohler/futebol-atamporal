@@ -25,13 +25,10 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("Default")
             ?? "Host=localhost;Port=5432;Database=futebol_atemporal;Username=futebol;Password=futebol";
 
-        services.AddDbContext<AppDbContext>(options =>
-        {
-            if (useSqlite)
-                options.UseSqlite(connectionString);
-            else
-                options.UseNpgsql(connectionString);
-        });
+        if (useSqlite)
+            services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+        else
+            services.AddDbContext<AppDbContext, PostgresAppDbContext>(options => options.UseNpgsql(connectionString));
 
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
@@ -76,6 +73,7 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IGroupQueryService, GroupQueryService>();
+        services.AddSingleton(TimeProvider.System);
         services.AddScoped<Application.Matches.IMatchService, MatchService>();
         services.AddScoped<Application.Matches.IRegistrationService, RegistrationService>();
         services.AddScoped<Application.Memberships.IMembershipService, MembershipService>();

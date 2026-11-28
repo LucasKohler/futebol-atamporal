@@ -54,6 +54,8 @@ public class Match
     public MatchStatus Status { get; set; } = MatchStatus.Draft;
     public string? Notes { get; set; }
     public int Version { get; set; }
+    public DateTimeOffset? MonthlyRegistrationOpensAt { get; set; }
+    public DateTimeOffset? CasualRegistrationOpensAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? UpdatedAt { get; set; }
 

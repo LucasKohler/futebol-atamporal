@@ -72,6 +72,7 @@ file sealed class AppExceptionHandler : IExceptionHandler
             ForbiddenException => (StatusCodes.Status403Forbidden, "Sem permissão", (string?)null, (IReadOnlyDictionary<string, object?>?)null),
             NotFoundException nf => (StatusCodes.Status404NotFound, "Não encontrado", nf.Code, (IReadOnlyDictionary<string, object?>?)null),
             ConflictException cf => (StatusCodes.Status409Conflict, "Conflito de estado", cf.Code, cf.Extensions),
+            RegistrationWindowClosedException rw => (StatusCodes.Status422UnprocessableEntity, "Janela de inscrição fechada", rw.Code, rw.Extensions),
             DomainException de => (StatusCodes.Status400BadRequest, "Regra de negócio", de.Code, de.Extensions),
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "Conflito de atualização", "live_version_conflict", (IReadOnlyDictionary<string, object?>?)null),
             _ => (0, null, null, null)

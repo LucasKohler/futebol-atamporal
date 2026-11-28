@@ -39,3 +39,8 @@ public class ConflictException : Exception
         Extensions = extensions;
     }
 }
+
+public sealed class RegistrationWindowClosedException(bool monthlyWindowStarted, DateTimeOffset opensAt)
+    : DomainException("A sua janela de inscrição ainda não abriu.",
+        monthlyWindowStarted ? "casual_window_not_open" : "registration_window_closed",
+        new Dictionary<string, object?> { ["opensAt"] = opensAt });
