@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -14,7 +15,6 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
     [Migration("20261127233247_MatchRegistrationWindows")]
     partial class MatchRegistrationWindows
     {
-        /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
@@ -23,30 +23,23 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.AuditEntry", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<string>("Action")
                         .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(80);
 
-                    b.Property<Guid>("ActorUserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("ActorUserId");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
-                    b.Property<Guid?>("EntityId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("EntityId");
 
                     b.Property<string>("EntityType")
                         .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(80);
 
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("GroupId");
 
                     b.Property<string>("PayloadJson")
                         .IsRequired()
@@ -64,16 +57,13 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.FootballGroup", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(120);
 
                     b.Property<string>("SettingsJson")
                         .IsRequired()
@@ -81,13 +71,11 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Slug")
                         .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(80);
 
                     b.Property<string>("TimeZoneId")
                         .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(80);
 
                     b.HasKey("Id");
 
@@ -100,27 +88,21 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.GroupMembership", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("GroupId");
 
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
                     b.HasKey("Id");
 
@@ -133,8 +115,7 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.Match", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<DateTimeOffset?>("CasualRegistrationOpensAt")
                         .HasColumnType("TEXT");
@@ -142,42 +123,33 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("GroupId");
 
                     b.Property<string>("Location")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(200);
 
                     b.Property<DateTimeOffset?>("MonthlyRegistrationOpensAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(2000);
 
-                    b.Property<int>("PlayerLimit")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("PlayerLimit");
 
-                    b.Property<DateTimeOffset>("StartsAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("StartsAt");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
                     b.Property<string>("Title")
-                        .HasMaxLength(160)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(160);
 
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("UpdatedAt");
 
                     b.Property<int>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("INTEGER");
+                        .IsConcurrencyToken();
 
                     b.HasKey("Id");
 
@@ -189,51 +161,38 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchFeePayment", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<decimal>("Amount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("TEXT");
+                        .HasPrecision(10, 2);
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
-                    b.Property<DateTimeOffset?>("DueAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("DueAt");
 
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("GroupId");
 
-                    b.Property<Guid>("MatchId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("MatchId");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(500);
 
-                    b.Property<DateTimeOffset?>("PaidAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("PaidAt");
 
                     b.Property<string>("PaymentSource")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
-                    b.Property<Guid>("PlayerProfileId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("PlayerProfileId");
 
-                    b.Property<Guid?>("RecordedByUserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("RecordedByUserId");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
                     b.Property<DateTimeOffset>("UpdatedAt")
-                        .IsConcurrencyToken()
-                        .HasColumnType("TEXT");
+                        .IsConcurrencyToken();
 
                     b.HasKey("Id");
 
@@ -250,28 +209,21 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchLiveSheet", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
-                    b.Property<Guid>("MatchId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("MatchId");
 
                     b.Property<string>("SheetJson")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                        .IsRequired();
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("UpdatedAt");
 
-                    b.Property<Guid>("UpdatedByUserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UpdatedByUserId");
 
                     b.Property<int>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("INTEGER");
+                        .IsConcurrencyToken();
 
                     b.HasKey("Id");
 
@@ -284,39 +236,29 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchRegistration", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<DateTimeOffset?>("ConfirmedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("ConfirmedAt");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
-                    b.Property<Guid>("MatchId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("MatchId");
 
-                    b.Property<Guid>("PlayerProfileId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("PlayerProfileId");
 
                     b.Property<string>("PriorityClass")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("UpdatedAt");
 
-                    b.Property<int?>("WaitlistPosition")
-                        .HasColumnType("INTEGER");
+                    b.Property<int?>("WaitlistPosition");
 
-                    b.Property<DateTimeOffset?>("WithdrawnAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("WithdrawnAt");
 
                     b.HasKey("Id");
 
@@ -333,30 +275,22 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchResult", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<int>("AwayScore")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("AwayScore");
 
-                    b.Property<DateTimeOffset>("ClosedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("ClosedAt");
 
-                    b.Property<Guid>("ClosedByUserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("ClosedByUserId");
 
-                    b.Property<int>("HomeScore")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("HomeScore");
 
-                    b.Property<Guid>("MatchId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("MatchId");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(2000);
 
-                    b.Property<Guid?>("WinnerTeamId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("WinnerTeamId");
 
                     b.HasKey("Id");
 
@@ -369,31 +303,23 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchResultRevision", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("CreatedByUserId");
 
-                    b.Property<bool>("IsCurrent")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("IsCurrent");
 
-                    b.Property<Guid>("MatchId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("MatchId");
 
                     b.Property<string>("Reason")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(500);
 
-                    b.Property<int>("Revision")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("Revision");
 
                     b.Property<string>("SheetJson")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                        .IsRequired();
 
                     b.HasKey("Id");
 
@@ -408,19 +334,15 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchTeam", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(40);
 
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("SortOrder");
 
-                    b.Property<Guid>("TeamDrawId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("TeamDrawId");
 
                     b.HasKey("Id");
 
@@ -432,28 +354,21 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MatchTeamMember", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<bool>("CanPlayGoalkeeperSnapshot")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("CanPlayGoalkeeperSnapshot");
 
                     b.Property<decimal?>("GoalkeeperRatingSnapshot")
-                        .HasPrecision(4, 2)
-                        .HasColumnType("TEXT");
+                        .HasPrecision(4, 2);
 
-                    b.Property<Guid>("MatchTeamId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("MatchTeamId");
 
-                    b.Property<Guid>("PlayerProfileId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("PlayerProfileId");
 
-                    b.Property<int>("Role")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("Role");
 
                     b.Property<decimal>("SkillRatingSnapshot")
-                        .HasPrecision(4, 2)
-                        .HasColumnType("TEXT");
+                        .HasPrecision(4, 2);
 
                     b.HasKey("Id");
 
@@ -468,22 +383,17 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MembershipBillingPeriod", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("GroupId");
 
                     b.Property<string>("Label")
                         .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(40);
 
-                    b.Property<int>("Month")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("Month");
 
-                    b.Property<int>("Year")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("Year");
 
                     b.HasKey("Id");
 
@@ -496,44 +406,33 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MembershipPayment", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<decimal>("Amount")
                         .IsConcurrencyToken()
-                        .HasPrecision(10, 2)
-                        .HasColumnType("TEXT");
+                        .HasPrecision(10, 2);
 
-                    b.Property<Guid>("BillingPeriodId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("BillingPeriodId");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
-                    b.Property<Guid>("MonthlyMembershipId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("MonthlyMembershipId");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(1000);
 
-                    b.Property<DateTimeOffset?>("PaidAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("PaidAt");
 
-                    b.Property<int>("PaymentSource")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("PaymentSource");
 
-                    b.Property<Guid>("RecordedByUserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("RecordedByUserId");
 
                     b.Property<string>("Status")
                         .IsConcurrencyToken()
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("UpdatedAt");
 
                     b.HasKey("Id");
 
@@ -548,25 +447,19 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.MonthlyMembership", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<DateTimeOffset?>("EndedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("EndedAt");
 
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("GroupId");
 
-                    b.Property<Guid>("PlayerProfileId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("PlayerProfileId");
 
-                    b.Property<DateTimeOffset>("StartedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("StartedAt");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
                     b.HasKey("Id");
 
@@ -577,66 +470,149 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                     b.ToTable("MonthlyMemberships");
                 });
 
+            modelBuilder.Entity("FutebolAtemporal.Domain.Entities.NotificationCampaign", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<string>("ActionUrl")
+                        .IsRequired()
+                        .HasMaxLength(64);
+
+                    b.Property<string>("Audience")
+                        .IsRequired()
+                        .HasMaxLength(32);
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(500);
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32);
+
+                    b.Property<DateTimeOffset>("CreatedAt");
+
+                    b.Property<Guid?>("CreatedByUserId");
+
+                    b.Property<Guid>("GroupId");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(64);
+
+                    b.Property<Guid?>("MatchId");
+
+                    b.Property<int>("PushDeviceCount");
+
+                    b.Property<int>("PushFailedCount");
+
+                    b.Property<int>("PushSentCount");
+
+                    b.Property<int>("RecipientCount");
+
+                    b.Property<string>("RequestHash")
+                        .HasMaxLength(64);
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32);
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("GroupId", "Source", "Category", "CreatedAt");
+
+                    b.ToTable("NotificationCampaigns");
+                });
+
+            modelBuilder.Entity("FutebolAtemporal.Domain.Entities.NotificationCooldown", b =>
+                {
+                    b.Property<Guid>("GroupId");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(32);
+
+                    b.Property<DateTimeOffset>("LastSentAt");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken();
+
+                    b.HasKey("GroupId", "Category");
+
+                    b.ToTable("NotificationCooldowns");
+                });
+
+            modelBuilder.Entity("FutebolAtemporal.Domain.Entities.NotificationDelivery", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<Guid>("NotificationId");
+
+                    b.Property<DateTimeOffset>("SentAt");
+
+                    b.Property<Guid>("SubscriptionId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubscriptionId");
+
+                    b.HasIndex("NotificationId", "SubscriptionId")
+                        .IsUnique();
+
+                    b.ToTable("NotificationDeliveries");
+                });
+
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.PixCharge", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<decimal>("Amount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("TEXT");
+                        .HasPrecision(10, 2);
 
-                    b.Property<DateTimeOffset?>("ApprovedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("ApprovedAt");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(200);
 
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("ExpiresAt");
 
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("GroupId");
 
                     b.Property<string>("IdempotencyKey")
                         .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(64);
 
-                    b.Property<bool>("IsSimulated")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("IsSimulated");
 
                     b.Property<string>("Kind")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
-                    b.Property<Guid?>("MatchFeePaymentId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("MatchFeePaymentId");
 
-                    b.Property<Guid?>("MatchId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("MatchId");
 
-                    b.Property<Guid?>("MembershipPaymentId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid?>("MembershipPaymentId");
 
                     b.Property<string>("MpPaymentId")
                         .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(80);
 
-                    b.Property<Guid>("PlayerProfileId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("PlayerProfileId");
 
                     b.Property<string>("ProviderStatus")
-                        .HasMaxLength(40)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(40);
 
                     b.Property<string>("QrCode")
                         .IsRequired()
@@ -648,11 +624,9 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                     b.Property<string>("Status")
                         .IsConcurrencyToken()
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("UpdatedAt");
 
                     b.HasKey("Id");
 
@@ -678,22 +652,17 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.PlayerAward", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<Guid>("AwardedByUserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("AwardedByUserId");
 
-                    b.Property<Guid>("MatchId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("MatchId");
 
-                    b.Property<Guid>("PlayerProfileId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("PlayerProfileId");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
                     b.HasKey("Id");
 
@@ -708,28 +677,21 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.PlayerMatchRating", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
-                    b.Property<Guid>("MatchId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("MatchId");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(1000);
 
-                    b.Property<Guid>("PlayerProfileId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("PlayerProfileId");
 
-                    b.Property<Guid>("RatedByUserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("RatedByUserId");
 
                     b.Property<decimal>("Score")
-                        .HasPrecision(4, 2)
-                        .HasColumnType("TEXT");
+                        .HasPrecision(4, 2);
 
                     b.HasKey("Id");
 
@@ -744,37 +706,28 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.PlayerProfile", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<string>("Bio")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(1000);
 
-                    b.Property<bool>("CanPlayGoalkeeper")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("CanPlayGoalkeeper");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
                     b.Property<decimal?>("GoalkeeperRating")
-                        .HasPrecision(4, 2)
-                        .HasColumnType("TEXT");
+                        .HasPrecision(4, 2);
 
                     b.Property<string>("Phone")
-                        .HasMaxLength(40)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(40);
 
                     b.Property<string>("PhotoUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(500);
 
                     b.Property<decimal>("SkillRating")
-                        .HasPrecision(4, 2)
-                        .HasColumnType("TEXT");
+                        .HasPrecision(4, 2);
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
                     b.HasKey("Id");
 
@@ -784,40 +737,89 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                     b.ToTable("PlayerProfiles");
                 });
 
+            modelBuilder.Entity("FutebolAtemporal.Domain.Entities.PushSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasMaxLength(128);
+
+                    b.Property<DateTimeOffset>("CreatedAt");
+
+                    b.Property<DateTimeOffset?>("DeactivatedAt");
+
+                    b.Property<string>("DeviceLabel")
+                        .HasMaxLength(60);
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(2048);
+
+                    b.Property<int>("FailureCount");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(200);
+
+                    b.Property<bool>("IsActive");
+
+                    b.Property<DateTimeOffset>("LastSeenAt");
+
+                    b.Property<DateTimeOffset?>("LastSuccessAt");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasMaxLength(256);
+
+                    b.Property<Guid?>("SessionId");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(256);
+
+                    b.Property<Guid>("UserId");
+
+                    b.Property<string>("VapidKeyId")
+                        .IsRequired()
+                        .HasMaxLength(16);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("Endpoint")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.ToTable("PushSubscriptions");
+                });
+
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.TeamDraw", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<string>("AlgorithmVersion")
-                        .HasMaxLength(40)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(40);
 
-                    b.Property<DateTimeOffset?>("ConfirmedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("ConfirmedAt");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("CreatedByUserId");
 
-                    b.Property<Guid>("MatchId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("MatchId");
 
                     b.Property<string>("Seed")
                         .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(80);
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(32);
 
-                    b.Property<int>("TeamCount")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("TeamCount");
 
                     b.HasKey("Id");
 
@@ -826,73 +828,121 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                     b.ToTable("TeamDraws");
                 });
 
+            modelBuilder.Entity("FutebolAtemporal.Domain.Entities.UserNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<string>("ActionUrl")
+                        .IsRequired()
+                        .HasMaxLength(64);
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(500);
+
+                    b.Property<Guid>("CampaignId");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32);
+
+                    b.Property<DateTimeOffset?>("ClaimedUntil");
+
+                    b.Property<DateTimeOffset>("CreatedAt");
+
+                    b.Property<string>("DedupeKey")
+                        .HasMaxLength(200);
+
+                    b.Property<int>("DispatchVersion")
+                        .IsConcurrencyToken();
+
+                    b.Property<Guid>("GroupId");
+
+                    b.Property<Guid?>("MatchId");
+
+                    b.Property<DateTimeOffset?>("NextPushAt");
+
+                    b.Property<int>("PushAttempts");
+
+                    b.Property<int>("PushSentCount");
+
+                    b.Property<string>("PushState")
+                        .IsRequired()
+                        .HasMaxLength(32);
+
+                    b.Property<DateTimeOffset?>("ReadAt");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120);
+
+                    b.Property<Guid>("UserId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampaignId");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("PushState", "NextPushAt");
+
+                    b.HasIndex("UserId", "DedupeKey")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "GroupId", "ReadAt");
+
+                    b.ToTable("UserNotifications");
+                });
+
             modelBuilder.Entity("FutebolAtemporal.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("AccessFailedCount");
 
                     b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("TEXT");
+                        .IsConcurrencyToken();
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("CreatedAt");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(120);
 
                     b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("EmailConfirmed");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("IsActive");
 
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("LockoutEnabled");
 
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTimeOffset?>("LockoutEnd");
 
                     b.Property<string>("Nickname")
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(80);
 
                     b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
                     b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("PasswordHash");
 
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("PhoneNumber");
 
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("PhoneNumberConfirmed");
 
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("SecurityStamp");
 
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("TwoFactorEnabled");
 
                     b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
                     b.HasKey("Id");
 
@@ -906,23 +956,42 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("FutebolAtemporal.Infrastructure.Identity.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<DateTimeOffset>("CreatedAt");
+
+                    b.Property<DateTimeOffset>("ExpiresAt");
+
+                    b.Property<DateTimeOffset?>("RevokedAt");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasMaxLength(256);
+
+                    b.Property<Guid>("UserId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserSessions");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd();
 
                     b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("TEXT");
+                        .IsConcurrencyToken();
 
                     b.Property<string>("Name")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
                     b.Property<string>("NormalizedName")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(256);
 
                     b.HasKey("Id");
 
@@ -936,17 +1005,15 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("TEXT");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ClaimType");
 
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ClaimValue");
+
+                    b.Property<Guid>("RoleId");
 
                     b.HasKey("Id");
 
@@ -958,17 +1025,15 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("TEXT");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ClaimType");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ClaimValue");
+
+                    b.Property<Guid>("UserId");
 
                     b.HasKey("Id");
 
@@ -979,17 +1044,13 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("LoginProvider");
 
-                    b.Property<string>("ProviderKey")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ProviderKey");
 
-                    b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("ProviderDisplayName");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
@@ -1000,11 +1061,9 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("RoleId");
 
                     b.HasKey("UserId", "RoleId");
 
@@ -1015,17 +1074,13 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                    b.Property<Guid>("UserId");
 
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("LoginProvider");
 
-                    b.Property<string>("Name")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("Name");
 
-                    b.Property<string>("Value")
-                        .HasColumnType("TEXT");
+                    b.Property<string>("Value");
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 
@@ -1212,6 +1267,36 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                     b.Navigation("PlayerProfile");
                 });
 
+            modelBuilder.Entity("FutebolAtemporal.Domain.Entities.NotificationCampaign", b =>
+                {
+                    b.HasOne("FutebolAtemporal.Domain.Entities.FootballGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("FutebolAtemporal.Domain.Entities.NotificationDelivery", b =>
+                {
+                    b.HasOne("FutebolAtemporal.Domain.Entities.UserNotification", "Notification")
+                        .WithMany()
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FutebolAtemporal.Domain.Entities.PushSubscription", "Subscription")
+                        .WithMany()
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Notification");
+
+                    b.Navigation("Subscription");
+                });
+
             modelBuilder.Entity("FutebolAtemporal.Domain.Entities.PixCharge", b =>
                 {
                     b.HasOne("FutebolAtemporal.Domain.Entities.FootballGroup", "Group")
@@ -1299,6 +1384,34 @@ namespace FutebolAtemporal.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Match");
+                });
+
+            modelBuilder.Entity("FutebolAtemporal.Domain.Entities.UserNotification", b =>
+                {
+                    b.HasOne("FutebolAtemporal.Domain.Entities.NotificationCampaign", "Campaign")
+                        .WithMany()
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FutebolAtemporal.Domain.Entities.FootballGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Campaign");
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("FutebolAtemporal.Infrastructure.Identity.UserSession", b =>
+                {
+                    b.HasOne("FutebolAtemporal.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

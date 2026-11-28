@@ -1,3 +1,4 @@
+using FutebolAtemporal.Application.Notifications;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -21,8 +22,13 @@ public sealed class RoundResultService : IRoundResultService
 {
     private static readonly JsonSerializerOptions Json = CreateJsonOptions();
     private readonly AppDbContext _db;
+    private readonly INotificationTriggerService? _notifications;
 
-    public RoundResultService(AppDbContext db) => _db = db;
+    public RoundResultService(AppDbContext db, INotificationTriggerService? notifications = null)
+    {
+        _db = db;
+        _notifications = notifications;
+    }
 
     private static JsonSerializerOptions CreateJsonOptions()
     {
@@ -476,8 +482,19 @@ public sealed class RoundResultService : IRoundResultService
             penaltySaves = sheet.Games.SelectMany(g => g.PenaltySaves ?? []).Sum(s => s.Count)
         });
 
+        if (_notifications is not null)
+        {
+            var participantIds = await _db.MatchRegistrations.AsNoTracking()
+                .Where(r => r.MatchId == matchId && (r.Status == RegistrationStatus.Confirmed || r.Status == RegistrationStatus.Participated))
+                .Select(r => r.PlayerProfileId)
+                .ToListAsync(ct);
+            var presentIds = sheet.Participants.Where(p => p.Present).Select(p => p.PlayerProfileId);
+            await _notifications.EnqueueMatchCompletedAsync(match.GroupId, match.Id, participantIds.Concat(presentIds).Distinct().ToList(), ct);
+        }
+
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+        _notifications?.SignalDispatcher();
         return (await GetRoundAsync(userId, matchId, null, ct))!;
     }
 

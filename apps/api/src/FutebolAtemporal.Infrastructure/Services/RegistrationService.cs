@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using FutebolAtemporal.Application.Notifications;
 using FutebolAtemporal.Application.Matches;
 using FutebolAtemporal.Domain.Entities;
 using FutebolAtemporal.Domain.Enums;
@@ -16,16 +17,18 @@ public sealed class RegistrationService : IRegistrationService
 
     private readonly AppDbContext _db;
     private readonly IMatchService _matches;
+    private readonly INotificationTriggerService? _notifications;
 
     private const string AuditType = "MatchWaitlist";
     private static readonly JsonSerializerOptions AuditJson = new(JsonSerializerDefaults.Web);
     private readonly TimeProvider _clock;
 
-    public RegistrationService(AppDbContext db, IMatchService matches, TimeProvider clock)
+    public RegistrationService(AppDbContext db, IMatchService matches, TimeProvider clock, INotificationTriggerService? notifications = null)
     {
         _db = db;
         _matches = matches;
         _clock = clock;
+        _notifications = notifications;
     }
 
     public Task<MatchDetailDto> JoinAsync(Guid userId, Guid matchId, JoinMatchRequest? request, CancellationToken ct = default)
@@ -353,6 +356,8 @@ public sealed class RegistrationService : IRegistrationService
                 var match = await _db.Matches.FirstOrDefaultAsync(m => m.Id == matchId, ct)
                     ?? throw new NotFoundException("Partida não encontrada.");
                 var regs = await _db.MatchRegistrations.Where(r => r.MatchId == matchId).ToListAsync(ct);
+                var waitlistedBefore = regs.Where(r => r.Status == RegistrationStatus.Waitlisted).Select(r => r.Id).ToHashSet();
+                var anyPromoted = false;
 
                 var roster = regs.Where(r => r.Status == RegistrationStatus.Confirmed).Select(r => r.PlayerProfileId).ToHashSet();
                 if (await mutate(match, regs))
@@ -361,11 +366,23 @@ public sealed class RegistrationService : IRegistrationService
                     var updatedRoster = regs.Where(r => r.Status == RegistrationStatus.Confirmed).Select(r => r.PlayerProfileId);
                     if (!roster.SetEquals(updatedRoster))
                         await DrawRosterGuard.InvalidateIfRosterChangedAsync(_db, match, updatedRoster, ct);
+
+                    var promoted = regs
+                        .Where(r => waitlistedBefore.Contains(r.Id) && r.Status == RegistrationStatus.Confirmed)
+                        .Select(r => (r.Id, r.PlayerProfileId, r.ConfirmedAt ?? _clock.GetUtcNow()))
+                        .ToList();
+                    if (promoted.Count > 0 && _notifications is not null)
+                    {
+                        anyPromoted = true;
+                        await _notifications.EnqueueWaitlistPromotedAsync(match.GroupId, match.Id, promoted, ct);
+                    }
+
                     match.Version++;
                     await _db.SaveChangesAsync(ct);
                 }
 
                 await tx.CommitAsync(ct);
+                if (anyPromoted) _notifications?.SignalDispatcher();
                 break;
             }
             catch (DbUpdateConcurrencyException) when (!retry || attempt >= MaxAttempts)

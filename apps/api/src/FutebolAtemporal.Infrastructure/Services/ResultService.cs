@@ -1,3 +1,4 @@
+using FutebolAtemporal.Application.Notifications;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FutebolAtemporal.Application.Results;
@@ -15,8 +16,13 @@ namespace FutebolAtemporal.Infrastructure.Services;
 public sealed class ResultService : IResultService
 {
     private readonly AppDbContext _db;
+    private readonly INotificationTriggerService? _notifications;
 
-    public ResultService(AppDbContext db) => _db = db;
+    public ResultService(AppDbContext db, INotificationTriggerService? notifications = null)
+    {
+        _db = db;
+        _notifications = notifications;
+    }
 
     public async Task<MatchResultDto> CloseAsync(Guid userId, Guid matchId, CloseMatchRequest request, CancellationToken ct = default)
     {
@@ -88,8 +94,19 @@ public sealed class ResultService : IResultService
         match.Status = MatchStatus.Completed;
         match.UpdatedAt = DateTimeOffset.UtcNow;
         match.Version++;
+
+        if (_notifications is not null)
+        {
+            var participantIds = await _db.MatchRegistrations
+                .Where(r => r.MatchId == matchId && (r.Status == RegistrationStatus.Confirmed || r.Status == RegistrationStatus.Participated))
+                .Select(r => r.PlayerProfileId)
+                .ToListAsync(ct);
+            await _notifications.EnqueueMatchCompletedAsync(match.GroupId, match.Id, participantIds, ct);
+        }
+
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+        _notifications?.SignalDispatcher();
 
         return new MatchResultDto(matchId, result.HomeScore, result.AwayScore, result.WinnerTeamId,
             request.ManOfTheMatchPlayerProfileId, result.Notes, result.ClosedAt);

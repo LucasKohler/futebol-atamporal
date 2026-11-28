@@ -2,6 +2,12 @@ namespace FutebolAtemporal.Application.Auth;
 
 public sealed record RegisterRequest(string Phone, string DisplayName, string? Password);
 public sealed record LoginRequest(string Phone, string? Password);
+
+/// <param name="ExpectedUserId">
+/// Opcional (compatibilidade). Quando enviado, o logout só encerra a sessão se for igual ao usuário autenticado;
+/// ausente-no-campo mantém o logout incondicional; presente porém vazio/inválido/divergente = 409 session_changed.
+/// </param>
+public sealed record LogoutRequest(string? ExpectedUserId = null);
 /// <summary>Reset feito pelo admin do grupo: define a nova senha do jogador.</summary>
 public sealed record AdminResetPasswordRequest(string? NewPassword);
 /// <summary>Criação única da senha do primeiro admin, autorizada pelo código de configuração do servidor.</summary>

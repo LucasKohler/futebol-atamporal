@@ -1,4 +1,4 @@
-﻿namespace FutebolAtemporal.Domain.Enums;
+namespace FutebolAtemporal.Domain.Enums;
 
 public enum GroupRole
 {
@@ -107,4 +107,40 @@ public enum RoundGameStatus
 {
     InProgress = 0,
     Finished = 1
+}
+public enum NotificationCategory
+{
+    MatchOpen = 0,
+    WaitlistPromoted = 1,
+    DrawPublished = 2,
+    MatchCompleted = 3,
+    RegistrationReminder = 4,
+    PaymentReminder = 5,
+    AdminBroadcast = 6,
+    LiveMatchStarted = 7
+}
+
+public enum NotificationAudience
+{
+    AllMembers = 0,
+    MatchConfirmed = 1,
+    PaymentPending = 2,
+    NotResponded = 3,
+    Direct = 4
+}
+
+public enum NotificationSource
+{
+    Automatic = 0,
+    AdminQuick = 1,
+    AdminBroadcast = 2
+}
+
+public enum NotificationPushState
+{
+    Pending = 0,
+    Sent = 1,
+    PartiallySent = 2,
+    Skipped = 3,
+    Failed = 4
 }

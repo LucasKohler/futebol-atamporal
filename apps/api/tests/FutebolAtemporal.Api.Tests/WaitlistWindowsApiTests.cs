@@ -158,6 +158,14 @@ public class WaitlistWindowsApiTests : IClassFixture<WebApplicationFactory<Progr
         Assert.DoesNotContain(b, Ids(demoted, "confirmed"));
         var events = await ReadAsync(await admin.GetAsync($"{route}/waitlist/audit"));
         Assert.Equal(8, events.GetArrayLength());
+
+        using var scope = _host.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var expectedUsers = await db.PlayerProfiles.Where(p => p.Id == d || p.Id == a)
+            .Select(p => p.UserId).OrderBy(id => id).ToListAsync();
+        var notifications = await db.UserNotifications.Where(n => n.Category == NotificationCategory.WaitlistPromoted)
+            .Select(n => n.UserId).OrderBy(id => id).ToListAsync();
+        Assert.Equal(expectedUsers, notifications);
     }
 
     [Fact]
@@ -251,6 +259,9 @@ public class WaitlistWindowsApiTests : IClassFixture<WebApplicationFactory<Progr
         await migrator.MigrateAsync("20261127034343_MatchFeeDueAt");
         await migrator.MigrateAsync();
 
+        // Reaplicar UserSessions roda novamente o corte de cookies.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await admin.GetAsync(route)).StatusCode);
+        (await TestAuth.LoginAsync(admin, "11999999999")).EnsureSuccessStatusCode();
         var after = await ReadAsync(await admin.GetAsync(route));
         Assert.False(after.GetProperty("registrationWindows").GetProperty("isConfigured").GetBoolean());
         var waiting = Assert.Single(after.GetProperty("waitlist").EnumerateArray());

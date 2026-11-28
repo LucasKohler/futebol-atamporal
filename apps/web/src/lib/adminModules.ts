@@ -9,7 +9,7 @@
 
 export type AdminModuleGroup = "rodada" | "pessoas" | "financeiro" | "grupo";
 
-export type AdminModuleIcon = "list" | "shuffle" | "scoreboard" | "people" | "wallet" | "settings";
+export type AdminModuleIcon = "list" | "shuffle" | "scoreboard" | "people" | "wallet" | "settings" | "bell";
 
 export type AdminModule = {
   id: string;
@@ -82,6 +82,15 @@ export const ADMIN_MODULES: AdminModule[] = [
     icon: "wallet",
     order: 1,
     group: "financeiro",
+  },
+  {
+    id: "notificacoes",
+    title: "Notificações",
+    description: "Lembretes rápidos, comunicados e avisos enviados ao celular e ao sininho do app.",
+    href: "/admin/notificacoes",
+    icon: "bell",
+    order: 1,
+    group: "grupo",
   },
 ];
 

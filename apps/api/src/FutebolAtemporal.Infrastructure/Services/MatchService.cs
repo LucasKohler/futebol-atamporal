@@ -1,3 +1,4 @@
+using FutebolAtemporal.Application.Notifications;
 using FutebolAtemporal.Application.Matches;
 using FutebolAtemporal.Domain.Entities;
 using FutebolAtemporal.Domain.Enums;
@@ -11,13 +12,15 @@ namespace FutebolAtemporal.Infrastructure.Services;
 public sealed class MatchService : IMatchService
 {
     private readonly AppDbContext _db;
+    private readonly INotificationTriggerService? _notifications;
 
     private readonly TimeProvider _clock;
 
-    public MatchService(AppDbContext db, TimeProvider clock)
+    public MatchService(AppDbContext db, TimeProvider clock, INotificationTriggerService? notifications = null)
     {
         _db = db;
         _clock = clock;
+        _notifications = notifications;
     }
 
     public async Task<MatchDto> CreateAsync(Guid userId, CreateMatchRequest request, CancellationToken ct = default)
@@ -37,7 +40,10 @@ public sealed class MatchService : IMatchService
             Status = request.OpenRegistrations ? MatchStatus.RegistrationOpen : MatchStatus.Draft
         };
         _db.Matches.Add(match);
+        if (request.OpenRegistrations && _notifications is not null)
+            await _notifications.EnqueueMatchOpenAsync(match.GroupId, match.Id, userId, ct);
         await _db.SaveChangesAsync(ct);
+        if (request.OpenRegistrations) _notifications?.SignalDispatcher();
         return ToDto(match, 0, 0);
     }
 
@@ -69,13 +75,17 @@ public sealed class MatchService : IMatchService
         match.Notes = request.Notes;
         match.UpdatedAt = _clock.GetUtcNow();
         // Limite maior promove a fila na ordem publicada.
-        if (capacityIncreased)
-            WaitlistLogic.Rebalance(regs, match.PlayerLimit, match.UpdatedAt.Value);
+        var promoted = capacityIncreased
+            ? WaitlistLogic.Rebalance(regs, match.PlayerLimit, match.UpdatedAt.Value)
+            : [];
         // Promoção por aumento de limite depois do sorteio invalida a escalação confirmada.
         await DrawRosterGuard.InvalidateIfRosterChangedAsync(
             _db, match, regs.Where(r => r.Status == RegistrationStatus.Confirmed).Select(r => r.PlayerProfileId), ct);
         match.Version++;
+        if (promoted.Count > 0 && _notifications is not null)
+            await _notifications.EnqueueWaitlistPromotedAsync(match.GroupId, match.Id, promoted.Select(p => (p.Id, p.PlayerProfileId, p.ConfirmedAt ?? match.UpdatedAt!.Value)).ToList(), ct);
         await _db.SaveChangesAsync(ct);
+        if (promoted.Count > 0) _notifications?.SignalDispatcher();
         return await ToDtoAsync(match, ct);
     }
 
@@ -88,7 +98,10 @@ public sealed class MatchService : IMatchService
         match.Status = target;
         match.UpdatedAt = _clock.GetUtcNow();
         match.Version++;
+        if (target == MatchStatus.RegistrationOpen && _notifications is not null)
+            await _notifications.EnqueueMatchOpenAsync(match.GroupId, match.Id, userId, ct);
         await _db.SaveChangesAsync(ct);
+        if (target == MatchStatus.RegistrationOpen) _notifications?.SignalDispatcher();
         return await ToDtoAsync(match, ct);
     }
 
@@ -107,11 +120,7 @@ public sealed class MatchService : IMatchService
         var candidates = await _db.Matches.AsNoTracking()
             .Where(m => m.GroupId == groupId && m.Status != MatchStatus.Cancelled && m.Status != MatchStatus.Completed)
             .ToListAsync(ct);
-        var match = candidates
-            .Where(m => m.StartsAt >= now.AddHours(-6))
-            .OrderBy(m => m.StartsAt)
-            .FirstOrDefault()
-            ?? candidates.Where(m => m.Status == MatchStatus.RegistrationOpen).OrderBy(m => m.Id).FirstOrDefault();
+        var match = MatchSelection.Upcoming(candidates, now);
 
         if (match is null) return null;
         return await BuildDetailAsync(userId, match, ct);

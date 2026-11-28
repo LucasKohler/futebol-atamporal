@@ -32,7 +32,12 @@ public class DatabaseProviderMigrationTests
         Assert.Equal(!useSqlite, db.Database.IsNpgsql());
         var migrations = db.Database.GetMigrations().ToArray();
         Assert.EndsWith(expectedBaseline, migrations[0], StringComparison.Ordinal);
-        Assert.EndsWith("_MatchRegistrationWindows", migrations[^1], StringComparison.Ordinal);
+        Assert.EndsWith(useSqlite ? "_MatchRegistrationWindows" : "_PwaNotificationsAndUserSessions",
+            migrations[^1], StringComparison.Ordinal);
+        var queue = Array.FindIndex(migrations, id => id.EndsWith("_MatchRegistrationWindows", StringComparison.Ordinal));
+        var pwa = Array.FindIndex(migrations, id => id.EndsWith(useSqlite ? "_UserSessions" : "_PwaNotificationsAndUserSessions", StringComparison.Ordinal));
+        Assert.True(queue >= 0 && pwa >= 0);
+        Assert.True(useSqlite ? pwa < queue : queue < pwa);
         Assert.DoesNotContain(migrations, id => id.EndsWith(otherBaseline, StringComparison.Ordinal));
         Assert.False(db.Database.HasPendingModelChanges());
     }

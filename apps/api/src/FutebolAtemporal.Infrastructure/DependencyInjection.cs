@@ -1,3 +1,5 @@
+using FutebolAtemporal.Application.Notifications;
+using FutebolAtemporal.Infrastructure.Notifications;
 using FutebolAtemporal.Application.Payments;
 using FutebolAtemporal.Infrastructure.MercadoPago;
 using FutebolAtemporal.Application.Abstractions;
@@ -7,6 +9,9 @@ using FutebolAtemporal.Domain.Services;
 using FutebolAtemporal.Infrastructure.Identity;
 using FutebolAtemporal.Infrastructure.Persistence;
 using FutebolAtemporal.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -47,17 +52,20 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
 
-        // Revalida sessões para que reset e recuperação encerrem sessões antigas imediatamente.
-        services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.Zero);
-
         services.ConfigureApplicationCookie(options =>
         {
             options.Cookie.Name = "fa_auth";
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             options.Cookie.SameSite = SameSiteMode.Lax;
-            options.SlidingExpiration = true;
-            options.ExpireTimeSpan = TimeSpan.FromDays(14);
+            // Sem renovação: só login/cadastro/setup/recuperação emitem fa_auth (fluxos sob o authLock do app).
+            // Uma resposta comum atrasada não pode reinstalar a sessão de outra conta.
+            options.SlidingExpiration = false;
+            options.ExpireTimeSpan = TimeSpan.FromDays(28);
+            // Sessão no servidor (fa_sid) + carimbo de segurança conferidos a cada requisição, sem renovar o cookie.
+            // Substitui o SecurityStampValidator do Identity, que renovaria o cookie a cada validação.
+            options.Events.OnSigningIn = SessionCookieEvents.OnSigningIn;
+            options.Events.OnValidatePrincipal = SessionCookieEvents.OnValidatePrincipal;
             options.Events.OnRedirectToLogin = ctx =>
             {
                 ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -69,6 +77,14 @@ public static class DependencyInjection
                 return Task.CompletedTask;
             };
         });
+
+        // Formato de cookie versionado: o ticket v2 é cifrado com outro propósito do Data Protection.
+        // Uma versão antiga do app (rollback ou réplica antiga com as mesmas chaves) não consegue ler um
+        // cookie v2 — portanto não aceita um fa_sid que a versão nova revogou. E a versão nova não lê
+        // cookies v1 (sem fa_sid). Ver SessionCookieEvents.TicketPurpose.
+        services.AddOptions<CookieAuthenticationOptions>(IdentityConstants.ApplicationScheme)
+            .Configure<IDataProtectionProvider>((options, dataProtection) =>
+                options.TicketDataFormat = new TicketDataFormat(dataProtection.CreateProtector(SessionCookieEvents.TicketPurpose)));
 
         services.AddHttpContextAccessor();
         services.AddScoped<IAuthService, AuthService>();
@@ -96,6 +112,33 @@ public static class DependencyInjection
         });
 
         services.AddScoped<SimulatedMercadoPagoClient>();
+
+        services.AddSingleton(sp => WebPushOptions.Resolve(
+            sp.GetRequiredService<IConfiguration>(),
+            sp.GetRequiredService<IHostEnvironment>(),
+            sp.GetService<ILoggerFactory>()?.CreateLogger("WebPush")));
+        services.AddSingleton<SimulatedWebPushStore>();
+        services.AddSingleton<NotificationWakeupSignal>();
+        services.AddHttpClient<LiveWebPushSender>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        }).ConfigurePrimaryHttpMessageHandler(() => WebPushTransport.CreateHandler(System.Net.Dns.GetHostAddressesAsync))
+        // A URL da inscrição identifica o aparelho (RFC 8030 §8.3): não registrar requisições do cliente de push.
+        .RemoveAllLoggers();
+        services.AddScoped<SimulatedWebPushSender>();
+        services.AddScoped<IWebPushSender>(sp =>
+        {
+            var opts = sp.GetRequiredService<WebPushOptions>();
+            return opts.Mode == WebPushMode.Live
+                ? sp.GetRequiredService<LiveWebPushSender>()
+                : sp.GetRequiredService<SimulatedWebPushSender>();
+        });
+        services.AddScoped<NotificationService>();
+        services.AddScoped<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
+        services.AddScoped<INotificationTriggerService>(sp => sp.GetRequiredService<NotificationService>());
+        services.AddSingleton<INotificationDispatchRunner, NotificationDispatchRunner>();
+        services.AddScoped<UserSessionCleanup>();
+        services.AddHostedService<NotificationDispatcher>();
         services.AddScoped<IMercadoPagoClient>(sp =>
         {
             var opts = sp.GetRequiredService<MercadoPagoOptions>();

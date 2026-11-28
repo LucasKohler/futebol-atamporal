@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace FutebolAtemporal.Api.Tests;
 
@@ -17,5 +18,16 @@ internal static class TestAuth
     {
         using var _ = await client.PostAsJsonAsync("/api/auth/admin-setup", new { setupCode = SetupCode, phone, password = Password });
         return await client.PostAsJsonAsync("/api/auth/login", new { phone, password = Password });
+    }
+
+    /// <summary>
+    /// POST /api/notifications/subscriptions com a precondição <c>expectedUserId</c> = usuário da sessão atual do cliente.
+    /// </summary>
+    public static async Task<HttpResponseMessage> SubscribePushAsync(HttpClient client, object body)
+    {
+        var me = await client.GetFromJsonAsync<JsonElement>("/api/auth/me");
+        var json = JsonSerializer.SerializeToNode(body, JsonSerializerOptions.Web)!.AsObject();
+        json["expectedUserId"] = me.GetProperty("id").GetGuid().ToString();
+        return await client.PostAsJsonAsync("/api/notifications/subscriptions", json);
     }
 }

@@ -34,3 +34,6 @@ yarn-error.log*
 *.log
 dist/
 coverage/
+
+# Chave VAPID de desenvolvimento gerada pela API (ContentRoot/.data/vapid.dev.json)
+apps/api/src/FutebolAtemporal.Api/.data/
